@@ -19,6 +19,8 @@ class Mesh {
  int cc=0, pc=0, sc=0;                      // current, previous, saved corners
  float vol=0, surf=0;                      // vol and surface
  
+ boolean m_fDrawIsles = false;
+ 
  // primary tables
  int[] V = new int [3*maxnt];               // V table (triangle/vertex indices)
  int[] O = new int [3*maxnt];               // O table (opposite corner indices)
@@ -363,6 +365,8 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
        if(tm[t]==5) fill(metal,opacity); 
        if(tm[t]==6) fill(brown,opacity); 
        if(tm[t]==7) fill(blue,opacity); 
+       if(tm[t]==8) fill(blue,220); 
+       if(tm[t]==9) fill(green,250); 
        if(vis[tm[t]]) {if(shrunk!=0) showShrunkT(t,shrunk); else shade(t);}
        }
      }
@@ -967,7 +971,28 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
    {
      if (m_result != null)
      {
-       m_result.stepColorRingExpander();
+       m_result.colorRingExpander();
+       if (m_fDrawIsles)
+       {
+         m_result.formIslands();
+       }
+     }
+   }
+   
+   void printNum()
+   {
+     if (m_result != null)
+     {
+       m_result.queryLength();
+     }
+   }
+   
+   void formIslands()
+   {
+     m_fDrawIsles = true;
+     if (m_result != null)
+     {
+       m_result.formIslands();
      }
    }
      

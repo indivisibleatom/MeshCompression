@@ -242,6 +242,8 @@ void keyPressed() {
   if (key=='1') {M.showEdges = true; R = new RingExpander(M); M.setResult(R.completeRingExpanderRecursive()); }
   if (key=='3') {M.advanceRingExpanderResult();}
   if (key=='4') {M.showEdges = true; if (R == null) { R = new RingExpander(M); } R.ringExpanderStepRecursive();}
+  if (key=='5') {M.printNum();}
+  if (key=='6') {M.formIslands();}
 
   } //------------------------------------------------------------------------ end keyPressed
   
