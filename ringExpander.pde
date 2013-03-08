@@ -11,7 +11,7 @@ class RingExpander
   public RingExpander(Mesh m)
   {
     m_mesh = m;
-    m_seed = (int) random(m_mesh.nc);
+    m_seed = (m_mesh.cc);
     m_numTrianglesToVisit = -1;
     m_numTrianglesVisited = 0;
     m_parentTriangles = new int[m_mesh.nv];
