@@ -231,6 +231,7 @@ class RingExpanderResult
     return -1;
   }
 
+  //Perform an actual submerge from a corner, the number of triangles to submerge and the bitString -- the path to follow for the submersion
   private int performSubmerge(int corner, int numToSubmerge, Stack<Integer> bitString)
   {
     if (isLeaf(corner))
@@ -275,7 +276,7 @@ class RingExpanderResult
         int numSubmerged = performSubmerge(m_mesh.l(corner), numToSubmerge, bitString);
         if (DEBUG && DEBUG_MODE >= LOW)
         {
-          if (numSubmerged < numToSubmerge)
+          if (numSubmerged < numToSubmerge && numSubmerged != -1)
           {
             print("Fatal bug in submersion! Should not happen!!");
           }
@@ -287,7 +288,7 @@ class RingExpanderResult
         int numSubmerged = performSubmerge(m_mesh.r(corner), numToSubmerge, bitString);
         if (DEBUG && DEBUG_MODE >= LOW)
         {
-          if (numSubmerged < numToSubmerge)
+          if (numSubmerged < numToSubmerge && numSubmerged != -1)
           {
             print("Fatal bug in submersion! Should not happen!!");
           }
@@ -350,11 +351,13 @@ class RingExpanderResult
       if (numL == -1)
       {
         combine(bitString, lStack);
+        bitString.push(1);
         return -1;
       }
       else if (numR == -1)
       {
         combine(bitString, rStack);
+        bitString.push(-1);
         return -1;
       }
       else if (numL > numToSubmerge || numR > numToSubmerge)
@@ -364,21 +367,25 @@ class RingExpanderResult
           if (numL < numR)
           {
             combine(bitString, lStack);
+            bitString.push(1);
           }
           else
           {
             combine(bitString, rStack);
+            bitString.push(-1);
           }
           return ((numL < numR) ? numL : numR);
         }
         else if (numL > numToSubmerge)
         {
           combine(bitString, lStack);
+          bitString.push(1);
           return numL;
         }
         else
         {
           combine(bitString, rStack);
+          bitString.push(-1);
           return numR;
         }
       }
@@ -675,7 +682,8 @@ class RingExpanderResult
     if (length != lastLength)
     {    
       lastLength = length;
-      print("The length of the last island is " + length + " " + m_mesh.cc);
+      print("The selected corner for starting is " + m_mesh.cc);
+      print("The length of the last island is " + length);
     }
   }
 
