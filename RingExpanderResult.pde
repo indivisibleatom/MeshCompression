@@ -185,8 +185,23 @@ class RingExpanderResult
       shoreVerts[index++] = -1;
     }
   }
-  
+
   //Utilities to determine leaf, single Parent, etc
+  private int getNumSuccessors(int corner)
+  {
+    int numSucL = 0;
+    int numSucR = 0;
+    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+    {
+      numSucR = getNumSuccessors(m_mesh.r(corner));
+    }
+    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+    {
+      numSucL = getNumSuccessors(m_mesh.l(corner));
+    }
+    return numSucL + numSucR + 1;
+  }
+  
   private int getNumChild(int corner)
   {
     int numChild = 0;
@@ -196,17 +211,17 @@ class RingExpanderResult
       numChild++;
     return numChild;
   }
-  
+
   private boolean isLeaf(int corner)
   {
     return (getNumChild(corner) == 0);
   }
-  
+
   private boolean isSingleParent(int corner)
   {
     return (getNumChild(corner) == 1);
   }
-  
+
   private int getChild(int corner)
   {
     if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
@@ -215,7 +230,7 @@ class RingExpanderResult
       return m_mesh.r(corner);
     return -1;
   }
-  
+
   private int performSubmerge(int corner, int numToSubmerge, Stack<Integer> bitString)
   {
     if (isLeaf(corner))
@@ -265,7 +280,7 @@ class RingExpanderResult
             print("Fatal bug in submersion! Should not happen!!");
           }
         }
-        return -1;       
+        return -1;
       }
       else if (popped == -1)
       {
@@ -295,7 +310,7 @@ class RingExpanderResult
       }
     }
   }
-  
+
   private int trySubmerge(int corner, int numToSubmerge, Stack<Integer> bitString)
   {
     if (isLeaf(corner))
@@ -383,7 +398,7 @@ class RingExpanderResult
       }
     }
   }
-  
+
   private void combine(Stack<Integer> mainStack, Stack<Integer> otherStack)
   {
     Stack<Integer> temp = new Stack();
@@ -394,6 +409,43 @@ class RingExpanderResult
     for (int i = 0; i < temp.size(); i++)
     {
       mainStack.push(temp.pop());
+    }
+  }
+  
+  //TODO msati3: Use the visitor pattern??
+  private void submergeAll(int corner)
+  {
+    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+    {
+      submergeAll(m_mesh.r(corner));
+    }
+    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+    {
+      submergeAll(m_mesh.l(corner));
+    }
+    markSubmerged(m_mesh.t(corner));
+  }
+  
+  private void submergeOther(int corner, int[] shoreVerts)
+  {
+    if (!hasVertices(m_mesh.t(corner), shoreVerts))
+    {
+      if (getNumSuccessors(corner) < ISLAND_SIZE)
+      {
+        submergeAll(corner);
+      }
+    }
+    else
+    {
+      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+      {
+        submergeOther(m_mesh.r(corner), shoreVerts);
+      }
+      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+      {
+        submergeOther(m_mesh.l(corner), shoreVerts);
+      }
+      markSubmerged(m_mesh.t(corner));
     }
   }
 
@@ -435,9 +487,10 @@ class RingExpanderResult
         else
         {
           int[] shoreVertsNeg = rNeg? shoreVertsR : shoreVertsL; 
+          int other = rNeg? m_mesh.l(corner) : m_mesh.r(corner);
           if (hasVertices(m_mesh.t(corner), shoreVertsNeg))
           {
-            //submergeOther(shoreVertsNeg); //TODO msati3: Implement
+            submergeOther(other, shoreVertsNeg);
             mergeShoreVertices(m_mesh.t(corner), shoreVertsR, shoreVertsL, shoreVerts);
             markSubmerged(m_mesh.t(corner));
             return -1;
@@ -464,14 +517,13 @@ class RingExpanderResult
           //Check for possible submersions possible in left branch and right branch recursively
           Stack<Integer> bitStringL = new Stack<Integer>();
           Stack<Integer> bitStringR = new Stack<Integer>();
-          int numTrianglesToSubmerge = lenR + lenL - ISLAND_SIZE -1;
+          int numTrianglesToSubmerge = lenR + lenL - (ISLAND_SIZE - 1);
           int numL = trySubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringL);
           int numR = trySubmerge(m_mesh.r(corner), numTrianglesToSubmerge, bitStringR);
-          
+
           //Actually perform the submersion using the bitstring as a guide. TODO msati3: Can the bitstring be removed?
           if (numL == -1)
           {
-            print("This is the case");
             performSubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringL);
             markAsBeach(corner, shoreVerts);
             return -1;
@@ -488,13 +540,13 @@ class RingExpanderResult
             if (numL < numR)
             {
               performSubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringL);
-              int numTrianglesLeft = lenR + lenL - ISLAND_SIZE - numL;
+              int numTrianglesLeft = lenR + lenL + 1 - numL;
               return numTrianglesLeft;
             }
             else
             {
               performSubmerge(m_mesh.r(corner), numTrianglesToSubmerge, bitStringR);
-              int numTrianglesLeft = lenR + lenL - ISLAND_SIZE - numR;
+              int numTrianglesLeft = lenR + lenL + 1 - numR;
               return numTrianglesLeft;
             }
           }
@@ -510,6 +562,11 @@ class RingExpanderResult
         }
         else
         {
+          if (lenR + lenL + 1 == ISLAND_SIZE)
+          {
+            markAsBeach(corner, shoreVerts);
+            return -1;
+          }
           return lenR + lenL + 1;
         }
       }
@@ -618,7 +675,7 @@ class RingExpanderResult
     if (length != lastLength)
     {    
       lastLength = length;
-      print("The length of the last island is " + length);
+      print("The length of the last island is " + length + " " + m_mesh.cc);
     }
   }
 
