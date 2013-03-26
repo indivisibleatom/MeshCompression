@@ -25,7 +25,7 @@ class Mesh {
  int[] V = new int [3*maxnt];               // V table (triangle/vertex indices)
  int[] O = new int [3*maxnt];               // O table (opposite corner indices)
  pt[] G = new pt [maxnv];                   // geometry table (vertices)
-
+ int[] island = new int[maxnv];
 
 vec[] Nv = new vec [maxnv];                 // vertex normals or laplace vectors
 vec[] Nt = new vec [maxnt];                // triangles normals
@@ -364,9 +364,9 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
        if(tm[t]==4) fill(magenta,opacity); 
        if(tm[t]==5) fill(metal,opacity); 
        if(tm[t]==6) fill(brown,opacity); 
-       if(tm[t]==7) fill(blue,opacity); 
+       if(tm[t]==7) fill(red,220); 
        if(tm[t]==8) fill(blue,220); 
-       if(tm[t]==9) fill(green,250); 
+       if(tm[t]==9) fill(yellow,250); 
        if(vis[tm[t]]) {if(shrunk!=0) showShrunkT(t,shrunk); else shade(t);}
        }
      }

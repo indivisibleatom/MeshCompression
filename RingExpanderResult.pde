@@ -1,8 +1,28 @@
 int ISLAND_SIZE = 5;
 int waterColor = 8;
+int landColor = 9;
+int breakerColor = 7;
+
+int numTriangle = 0;
 
 int numTrianglesInIsland = 0;
 int lastLength = 0;
+int numIslands = 1;
+
+class VisitState
+{
+  private int m_corner;
+  
+  public VisitState(int corner)
+  {
+    m_corner = corner;
+  }
+  
+  public int corner()
+  {
+    return m_corner;
+  }
+}
 
 class RingExpanderResult
 {
@@ -51,8 +71,9 @@ class RingExpanderResult
     if ((m_numTrianglesToColor == -1 || m_numTrianglesColored < m_numTrianglesToColor))
     {
       m_numTrianglesColored++;
+      m_mesh.showCorner(corner, 3);
       setColor(corner);
-      label(corner);
+      //label(corner);
 
       if (isValidChild(m_mesh.r(corner), corner))
       {
@@ -126,7 +147,7 @@ class RingExpanderResult
 
   private void markSubmerged(int tri)
   {
-    m_mesh.tm[tri] = 8;
+    m_mesh.tm[tri] = waterColor;
   }
 
   private boolean hasVertices(int tri, int[] shoreVerts)
@@ -230,12 +251,27 @@ class RingExpanderResult
       return m_mesh.r(corner);
     return -1;
   }
+  
+  private void markVisited(int triangle)
+  {
+    m_mesh.island[m_mesh.v(m_mesh.c(triangle))] = numIslands;
+    m_mesh.island[m_mesh.v(m_mesh.n(m_mesh.c(triangle)))] = numIslands;
+    m_mesh.island[m_mesh.v(m_mesh.p(m_mesh.c(triangle)))] = numIslands;
+  }
+  
+  private void unmarkVisited(int triangle)
+  {
+    m_mesh.island[m_mesh.v(m_mesh.c(triangle))] = -1;
+    m_mesh.island[m_mesh.v(m_mesh.n(m_mesh.c(triangle)))] = -1;
+    m_mesh.island[m_mesh.v(m_mesh.p(m_mesh.c(triangle)))] = -1;
+  }
 
   //Perform an actual submerge from a corner, the number of triangles to submerge and the bitString -- the path to follow for the submersion
   private int performSubmerge(int corner, int numToSubmerge, Stack<Integer> bitString)
   {
     if (isLeaf(corner))
     {
+      unmarkVisited(m_mesh.t(corner));
       markSubmerged(m_mesh.t(corner));
       if (numToSubmerge == 1)
       {
@@ -259,11 +295,13 @@ class RingExpanderResult
       }
       else if (numSubmerged+1 == numToSubmerge)
       {
+        unmarkVisited(m_mesh.t(corner));
         markSubmerged(m_mesh.t(corner));
         return -1;
       }
       else
       {
+        unmarkVisited(m_mesh.t(corner));
         markSubmerged(m_mesh.t(corner));
         return numSubmerged + 1;
       }
@@ -299,6 +337,7 @@ class RingExpanderResult
       {
         int numL = performSubmerge(m_mesh.l(corner), numToSubmerge, bitString);
         int numR = performSubmerge(m_mesh.r(corner), numToSubmerge, bitString);
+        unmarkVisited(m_mesh.t(corner));
         markSubmerged(m_mesh.t(corner));
         if  (numL + numR + 1 >= numToSubmerge)
         {
@@ -488,6 +527,8 @@ class RingExpanderResult
           }
           else
           {
+            numIslands++;
+            markVisited(m_mesh.t(corner));
             return 1;
           }
         }
@@ -507,11 +548,13 @@ class RingExpanderResult
             int lOther = rNeg? lenL : lenR;
             if (lOther+1 == ISLAND_SIZE)
             {
+              markVisited(m_mesh.t(corner));
               markAsBeach(corner, shoreVerts);
               return -1;
             }
             else
             {
+              markVisited(m_mesh.t(corner));
               return lOther + 1;
             }
           }
@@ -532,12 +575,14 @@ class RingExpanderResult
           if (numL == -1)
           {
             performSubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringL);
+            markVisited(m_mesh.t(corner));
             markAsBeach(corner, shoreVerts);
             return -1;
           }
           else if (numR == -1)
           {
             performSubmerge(m_mesh.r(corner), numTrianglesToSubmerge, bitStringR);
+            markVisited(m_mesh.t(corner));
             markAsBeach(corner, shoreVerts);
             return -1;
           }
@@ -547,12 +592,14 @@ class RingExpanderResult
             if (numL < numR)
             {
               performSubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringL);
+              markVisited(m_mesh.t(corner));
               int numTrianglesLeft = lenR + lenL + 1 - numL;
               return numTrianglesLeft;
             }
             else
             {
               performSubmerge(m_mesh.r(corner), numTrianglesToSubmerge, bitStringR);
+              markVisited(m_mesh.t(corner));
               int numTrianglesLeft = lenR + lenL + 1 - numR;
               return numTrianglesLeft;
             }
@@ -571,9 +618,11 @@ class RingExpanderResult
         {
           if (lenR + lenL + 1 == ISLAND_SIZE)
           {
+            markVisited(m_mesh.t(corner));
             markAsBeach(corner, shoreVerts);
             return -1;
           }
+          markVisited(m_mesh.t(corner));
           return lenR + lenL + 1;
         }
       }
@@ -584,23 +633,16 @@ class RingExpanderResult
       int[] shoreVertsChild = (lenR == 0)? shoreVertsL : shoreVertsR; 
       if (lenChild == -1)
       {
-        //DEBUG        
-        if (m_mesh.t(m_mesh.cc) == m_mesh.t(corner))
-        {       
-          //print("The triangle vertices are" +  m_mesh.v(corner) + " " + m_mesh.v(m_mesh.n(corner)) + " " + m_mesh.v(m_mesh.p(corner)) + "\n");
-        }
         if (hasVertices(m_mesh.t(corner), shoreVertsChild))
         {
-          if (m_mesh.t(m_mesh.cc) == m_mesh.t(corner))
-          {
-            //print("Will submerge");
-          }
           markSubmerged(m_mesh.t(corner));
           propagateShoreVertices(m_mesh.t(corner), shoreVertsChild, shoreVerts);
           return -1;
         }
         else
         {
+          numIslands++;
+          markVisited(m_mesh.t(corner));
           return 1;
         }
       }
@@ -608,6 +650,7 @@ class RingExpanderResult
       {
         if (lenChild + 1 == ISLAND_SIZE)
         {
+          markVisited(m_mesh.t(corner));
           markAsBeach(corner, shoreVerts);
           int cnr = m_mesh.o(corner);
           //print("The shore vertices are " + shoreVerts[0] + " " + shoreVerts[1] + ". The parent vertices are " + m_mesh.v(cnr) + " " + m_mesh.v(m_mesh.n(cnr)) + "  " + m_mesh.v(m_mesh.p(cnr)) + "\n");
@@ -620,12 +663,14 @@ class RingExpanderResult
         }
         else
         {
+          markVisited(m_mesh.t(corner));
           return lenChild + 1;
         }
       }
     }
     else
     {
+      markVisited(m_mesh.t(corner));
       return 1; //Leaf
     }
   }
@@ -668,22 +713,61 @@ class RingExpanderResult
     visitAndColor(m_seed);
     m_mesh.tm[m_mesh.t(m_seed)] = 3;
   }
+  
+  private boolean isBreakerTriangle(int triangle)
+  {
+    int v1 = m_mesh.v(m_mesh.c(triangle));
+    int v2 = m_mesh.v(m_mesh.n(m_mesh.c(triangle)));
+    int v3 = m_mesh.v(m_mesh.p(m_mesh.c(triangle)));
+
+    if (m_mesh.island[v1] != -1 && m_mesh.island[v2] != -1 && m_mesh.island[v3] != -1)
+    {
+      if ((m_mesh.island[v1] != m_mesh.island[v2]) && (m_mesh.island[v1] != m_mesh.island[v3]) && (m_mesh.island[v2] != m_mesh.island[v3]))
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  private void colorBreakerTriangles()
+  {
+    for (int i = 0; i < m_mesh.nt; i++)
+    {
+      if (isBreakerTriangle(i))
+      {
+        m_mesh.tm[i] = breakerColor;
+      }
+    }
+  }
 
   public void formIslands()
   {
+    //init
     int[] shoreVertices = {
       -1, -1
     };
     int cornerToStart = getCornerOnLR(m_mesh.cc);
     if (cornerToStart == -1)
-      return ;
+      return ;  
     m_mesh.cc = cornerToStart;
+    numIslands = 0;
+    for (int i = 0; i < m_mesh.island.length; i++)
+    {
+      m_mesh.island[i] = -1;
+    }
+    
+
     int length = formIslesAndGetLength(cornerToStart, shoreVertices);
+    numIslands++;
+    colorBreakerTriangles();
+    
     if (length != lastLength)
     {    
       lastLength = length;
       print("The selected corner for starting is " + m_mesh.cc);
       print("The length of the last island is " + length);
+      print("Number of islands is " + numIslands);
     }
   }
 
