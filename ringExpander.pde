@@ -21,7 +21,7 @@ class State
 }
 
 class RingExpander
-{  
+{
   private Mesh m_mesh;
   private int m_seed;
   private int m_numTrianglesToVisit;
@@ -34,11 +34,20 @@ class RingExpander
   boolean[] m_triangleVisited;
 
   Stack< State > m_recursionStack;
-
-  public RingExpander(Mesh m)
+  
+  public RingExpander(Mesh m, int seed)
   {
     m_mesh = m;
-    m_seed = (m_mesh.cc);
+    m_mesh.resetMarkers();
+    m_seed = 0;
+
+    if (seed != -1)
+    {
+      print("Seed for ringExpander " + seed);
+      m_seed = seed;
+    }
+    m_mesh.cc = m_seed;
+
     m_numTrianglesToVisit = -1;
     m_numTrianglesVisited = 0;
     m_parentTriangles = new int[m_mesh.nv];

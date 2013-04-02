@@ -10,6 +10,8 @@ import java.util.*;
 GL gl; 
 GLU glu; 
 
+boolean fShowCorners = true;
+
 // ****************************** GLOBAL VARIABLES FOR DISPLAY OPTIONS *********************************
 Boolean frontPick=true, translucent=false, showMesh=true, pickBack=false, showNormals=false, showVertices=false, labels=false, 
    showSilhouette=false, showHelpText=false, showLeft=true, showRight=true, showBack=false, showMiddle=false, showBaffle=false; // display modes
@@ -48,7 +50,7 @@ void setup() {
     M.resetMarkers(); // resets vertex and tirangle markers
     }
   M=MM[m];
-  M.loadMeshVTS("data/horse.vts");
+  M.loadMeshVTS("data/flat.vts");
   M.updateON();  
   M.resetMarkers();
   M.computeBox();  
@@ -86,12 +88,13 @@ void draw() {
     else {                                                  // opaque mode
       if(M.showEdges) stroke(dblue); else noStroke(); 
       M.showTriangles(true,255,shrunk);
+      M.showMarkers();
       }      
     }
       
     // -------------------------------------------------------- graphic picking on surface ----------------------------------   
   if (keyPressed&&key=='t') T.set(Pick()); // sets point T on the surface where the mouse points. The camera will turn toward's it when the 't' key is released
-  if (keyPressed&&key=='h') M.pickc(Pick()); // sets c to closest corner in M 
+  if (keyPressed&&key=='h') { M.pickc(Pick()); M.printState(); }// sets c to closest corner in M 
   if(pressed) {
      if (keyPressed&&key=='s') M.picks(Pick()); // sets M.sc to the closest corner in M from the pick point
      if (keyPressed&&key=='c') M.pickc(Pick()); // sets M.cc to the closest corner in M from the pick point
@@ -112,7 +115,7 @@ void draw() {
   M.showcc();  // display corner markers: seed sc (green),  current cc (red)
   
   // --------------------------------------------------------- display corners visited by ringexpander ------------------------------
-  M.showRingExpanderCorners();
+  //M.showRingExpanderCorners();
 
   
   // -------------------------------------------------------- display FRONT if we were picking on the back ---------------------------------- 
@@ -240,11 +243,24 @@ void keyPressed() {
   if(key=='V') {sE.set(E); sF.set(F); sU.set(U);}
   if(key=='v') {E.set(sE); F.set(sF); U.set(sU);}
   if (key == '!') {snapping=true;} // saves picture of screen
-  if (key=='1') {M.showEdges = true; R = new RingExpander(M); M.setResult(R.completeRingExpanderRecursive()); }
+  if (key=='1') {g_stepWiseRingExpander.setStepMode(false); M.showEdges = true; R = new RingExpander(M, -1); M.setResult(R.completeRingExpanderRecursive()); M.showRingExpanderCorners(); }
   if (key=='3') {M.advanceRingExpanderResult();}
-  if (key=='4') {M.showEdges = true; if (R == null) { R = new RingExpander(M); } R.ringExpanderStepRecursive();}
-  if (key=='5') {M.printNum();}
-  if (key=='6') {M.formIslands();}
+  if (key=='4') {g_stepWiseRingExpander.setStepMode(true); M.showEdges = true; if (R == null) { R = new RingExpander(M, -1); } R.ringExpanderStepRecursive();}
+  if (key=='6') {g_stepWiseRingExpander.setStepMode(false); M.formIslands(-1);}
+  if (key=='7')
+  {
+    g_stepWiseRingExpander.setStepMode(false);
+    StatsCollector s = new StatsCollector(); 
+    s.collectStats(10, 30);
+    s.collectStats(10, 62);
+    //s.collectStats(10, 5);
+    s.done();
+  }
+  if (key =='8')
+  {
+    fShowCorners = false;
+    M.colorTriangles();
+  }
 
   } //------------------------------------------------------------------------ end keyPressed
   

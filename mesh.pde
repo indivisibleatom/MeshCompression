@@ -25,7 +25,7 @@ class Mesh {
  int[] V = new int [3*maxnt];               // V table (triangle/vertex indices)
  int[] O = new int [3*maxnt];               // O table (opposite corner indices)
  pt[] G = new pt [maxnv];                   // geometry table (vertices)
- int[] island = new int[maxnv];
+ int[] island = new int[3*maxnt];
 
 vec[] Nv = new vec [maxnv];                 // vertex normals or laplace vectors
 vec[] Nt = new vec [maxnt];                // triangles normals
@@ -114,6 +114,7 @@ vec[] Nt = new vec [maxnt];                // triangles normals
    for (int i=0; i<nc; i++) cm[i]=0;
    for (int i=0; i<nt; i++) tm[i]=0;
    for (int i=0; i<nt; i++) visible[i]=true;
+   for (int i = 0; i < island.length; i++) island[i] = -1;
    }
  
  int addVertex(pt P) { G[nv].set(P); nv++; return nv-1;};
@@ -288,7 +289,18 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
      }
 
 // ============================================= DISPLAY CORNERS and LABELS =============================
-  void showCorner(int c, float r) {show(cg(c),r); };   // renders corner c as small ball
+  void showMarkers()
+  {
+    for (int i = 0; i < 3*nt; i++)
+    {
+      if (cm[i] != 0)
+      {
+        showCorner(i, 3);
+      }
+    }
+  }
+
+  void showCorner(int c, float r) {if (fShowCorners) {show(cg(c),r);} };   // renders corner c as small ball
   
   void showcc(){noStroke(); fill(blue); showCorner(sc,3); /* fill(green); showCorner(pc,5); */ fill(dred); showCorner(cc,3); } // displays corner markers
   
@@ -361,10 +373,10 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
        if(tm[t]==1) fill(red,opacity); 
        if(tm[t]==2) fill(green,opacity); 
        if(tm[t]==3) fill(cyan,opacity); 
-       if(tm[t]==4) fill(magenta,opacity); 
-       if(tm[t]==5) fill(metal,opacity); 
+       if(tm[t]==4) fill(magenta,250); 
+       if(tm[t]==5) fill(green,opacity); 
        if(tm[t]==6) fill(brown,opacity); 
-       if(tm[t]==7) fill(red,220); 
+       if(tm[t]==7) fill(blue,250); 
        if(tm[t]==8) fill(blue,220); 
        if(tm[t]==9) fill(yellow,250); 
        if(vis[tm[t]]) {if(shrunk!=0) showShrunkT(t,shrunk); else shade(t);}
@@ -972,28 +984,122 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
      if (m_result != null)
      {
        m_result.colorRingExpander();
-       if (m_fDrawIsles)
-       {
-         m_result.formIslands();
-       }
      }
    }
    
-   void printNum()
-   {
-     if (m_result != null)
-     {
-       m_result.queryLength();
-     }
-   }
-   
-   void formIslands()
+   void formIslands(int initCorner)
    {
      m_fDrawIsles = true;
      if (m_result != null)
      {
-       m_result.formIslands();
+       showRingExpanderCorners();
+       m_result.formIslands(initCorner);
      }
+   }
+   
+   private boolean waterIncident(int triangle)
+   {
+     int corner = c(triangle);
+     return (isWaterVertex(corner) || isWaterVertex(n(corner)) || isWaterVertex(p(corner)));
+   }
+
+   private boolean isWaterVertex(int corner)
+   {
+     int initCorner = corner;
+     int curCorner = initCorner;
+     do
+     {
+       if (island[curCorner] != -1)
+       {
+         return false;
+       }
+       curCorner = s(curCorner);
+     }while (curCorner != initCorner);
+     return true;
+   } 
+   
+   private int getIslandByUnswing(int corner)
+   {
+     int initCorner = corner;
+     int curCorner = initCorner;
+     do
+     {
+       if (island[curCorner] != -1)
+       {
+         return island[curCorner];
+       }
+       int swing = u(curCorner);
+       if (swing == n(curCorner))
+       {
+         break;
+       }
+       curCorner = swing;
+     }while (curCorner != initCorner);
+     return -1;
+   }
+  
+   private int getIsland(int corner)
+   {
+     int initCorner = corner;
+     int curCorner = initCorner;
+     do
+     {
+       if (island[curCorner] != -1)
+       {
+         return island[curCorner];
+       }
+       int swing = s(curCorner);
+       if (swing == p(curCorner))
+       {
+         return getIslandByUnswing(initCorner);
+       }
+       curCorner = swing;
+     }while (curCorner != initCorner);
+     return -1;
+   }
+   
+   void colorTriangles()
+   {
+     for (int i = 0; i < nt; i++)
+     {
+       int corner = c(i);
+       int island1 = getIsland(corner);
+       int island2 = getIsland(n(corner));
+       int island3 = getIsland(p(corner));
+       tm[i] = 5;
+       if (waterIncident(i))
+       {
+         int unique = ((island1 != -1)? island1 : (island2 != -1)? island2 : island3);
+         if ((island1 == unique || island1 == -1) && (island2 == unique || island2 == -1) && (island3 == unique || island3 == -1) && unique != -1)
+         {
+           tm[i] = 5;
+         }
+         else
+         {
+           tm[i] = 4;
+         }
+       }
+       else if (island[corner] != -1 && island[n(corner)] != -1 && island[p(corner)] != -1 && island1 == island2 && island1 == island3)
+       {
+         tm[i] = landColor;
+       }
+       else if (island1 != -1 && island2 != -1 && island3 != -1 && island1 != island2 && island1 != island3 && island2 != island3)
+       {
+         tm[i] = breakerColor;
+       }
+       else if (island1 != -1 && island2 != -1 && island3 != -1 && island1 == island2 || island1 == island3 || island2 == island3)
+       {
+         tm[i] = 3;
+       }
+     }
+   }
+   
+   void printState()
+   {
+       int corner = cc;
+       int island1 = getIsland(corner);
+       int island2 = getIsland(n(corner));
+       int island3 = getIsland(p(corner));
    }
      
   } // ==== END OF MESH CLASS
