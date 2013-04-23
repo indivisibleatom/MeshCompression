@@ -26,7 +26,7 @@ class Mesh {
  // primary tables
  int[] V = new int [3*maxnt];               // V table (triangle/vertex indices)
  int[] O = new int [3*maxnt];               // O table (opposite corner indices)
- int[] C = new int [maxnv];                  // For querying for any corner for a vertex
+ int[] CForV = new int [maxnv];                  // For querying for any corner for a vertex
  pt[] G = new pt [maxnv];                   // geometry table (vertices)
  pt[] baseG = new pt [maxnv];               // to store the locations of the vertices in their contracted form
  int[] island = new int[3*maxnt];
@@ -150,7 +150,7 @@ class Mesh {
   boolean hasValidR(int c) { return r(c) != p(c); }
   boolean hasValidL(int c) { return l(c) != n(c); }
   
-  int cForV(int v) { if (C[v] == -1) { print("Fatal error! The corner for the vertex is -1"); } return C[v]; }
+  int cForV(int v) { if (CForV[v] == -1) { print("Fatal error! The corner for the vertex is -1"); } return CForV[v]; }
 
     // operations on the selected corner cc
   int t() {return t(cc); }
@@ -277,6 +277,8 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
     int fic[] = new int [nv]; int rfic=0; for (int v=0; v<nv; v++) {fic[v]=rfic; rfic+=val[v];};  // head of list of incident corners
     for (int v=0; v<nv; v++) val[v]=0;   // valences wil be reused to track how many incident corners were encountered for each vertex
     int [] C = new int [nc]; for (int c=0; c<nc; c++) C[fic[v(c)]+val[v(c)]++]=c;  // vor each vertex: the list of val[v] incident corners starts at C[fic[v]]
+    for (int i = 0; i < nv; i++){ CForV[i] = -1; }
+    for (int i = 0; i < nc; i++){ if (CForV[v(i)] == -1) { CForV[v(i)] = i; } }
     for (int c=0; c<nc; c++) O[c]=c;    // init O table to -1 meaning that a corner has no opposite (i.e. faces a border)
     for (int v=0; v<nv; v++)             // for each vertex...
        for (int a=fic[v]; a<fic[v]+val[v]-1; a++) for (int b=a+1; b<fic[v]+val[v]; b++)  { // for each pair (C[a],C[b[]) of its incident corners
@@ -695,7 +697,6 @@ void loadMeshVTS(String fn) {
       String rest = ss[i].substring(comma1+1, ss[i].length());
       comma2=rest.indexOf(',');    y=float(rest.substring(0, comma2)); z=float(rest.substring(comma2+1, rest.length()));
       G[k].set(x,y,z);
-      C[k] = -1;
     };
   s=nv+1;
   nt = int(ss[s]); nc=3*nt;
@@ -706,19 +707,6 @@ void loadMeshVTS(String fn) {
       String rest = ss[i].substring(comma1+1, ss[i].length()); comma2=rest.indexOf(',');  
       b=int(rest.substring(0, comma2)); c=int(rest.substring(comma2+1, rest.length()));
       V[3*k]=a;  V[3*k+1]=b;  V[3*k+2]=c;
-      if (C[a] == -1)
-      {
-        print("Setting " + a + " " + 3*k);
-        C[a] = 3*k;
-      }
-      if (C[b] == -1)
-      {
-        C[b] = 3*k + 1;
-      }
-      if (C[c] == -1)
-      {
-        C[c] = 3*k + 2;
-      }
     }
   };
   
@@ -1024,10 +1012,16 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
    private boolean waterIncident(int triangle)
    {
      int corner = c(triangle);
-     return (isWaterVertex(corner) || isWaterVertex(n(corner)) || isWaterVertex(p(corner)));
+     return (isVertexForCornerWaterVertex(corner) || isVertexForCornerWaterVertex(n(corner)) || isVertexForCornerWaterVertex(p(corner)));
+   }
+   
+   private boolean isWaterVertex(int vertex)
+   {
+     int cornerForVertex = cForV(vertex);
+     return isVertexForCornerWaterVertex(cornerForVertex);
    }
 
-   private boolean isWaterVertex(int corner)
+   private boolean isVertexForCornerWaterVertex(int corner)
    {
      int initCorner = corner;
      int curCorner = initCorner;
@@ -1100,6 +1094,7 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
    ColorResult colorTriangles()
    {
      int countLand = 0, countGood = 0, countSeparator = 0, countLagoons = 0, countBad = 0;
+     int numVerts = 0, numWaterVerts = 0, numNormalVerts = 0;
      for (int i = 0; i < nt; i++)
      {
        int corner = c(i);
@@ -1136,12 +1131,25 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
          }
        }
      }
-     print("\nStats : Total " + nt + " Land " + countLand + " Good water " + countGood + " Island separators " + countSeparator + " Lagoons " + countLagoons + " Bad water " + countBad);
+     
+     for (int i = 0; i < nv; i++)
+     {
+       numVerts++;
+       if (isWaterVertex(i))
+       {
+         numWaterVerts++;
+       }
+       else
+       {
+         numNormalVerts++;
+       }
+     }
+     print("\nStats : Total " + nt + " Land " + countLand + " Good water " + countGood + " Island separators " + countSeparator + " Lagoons " + countLagoons + " Bad water " + countBad + "Num Water Verts " + numWaterVerts);
      
      //TODO msati3: This is a hack. Should be made a separate function
      computeBaryCenterForIslands();
      calculateFinalLocationsForVertices();
-     return new ColorResult(nt, countLand, countGood, countSeparator, countLagoons, countBad);
+     return new ColorResult(nt, countLand, countGood, countSeparator, countLagoons, countBad, numVerts, numWaterVerts, numNormalVerts);
    }
    
    void printState()
@@ -1155,7 +1163,7 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
    private int getVertexType(int vertex)
    {
      int cornerForVertex = cForV(vertex);
-     if (!isWaterVertex(cornerForVertex))
+     if (!isVertexForCornerWaterVertex(cornerForVertex))
      {
        return 0;
      }
@@ -1243,10 +1251,10 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
      //print("\n");
      return result;
    }
-   
+
    void drawBarycenters()
    {
-     if (islandArea[0] != 0)
+     /*if (islandArea[0] != 0)
      {
        for (int i = 0; i < numIslands; i++)
        {
@@ -1254,9 +1262,9 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
          sphere(5);
          translate(-islandBaryCenter[i].x, -islandBaryCenter[i].y, -islandBaryCenter[i].z);
        }
-     }
+     }*/
    }
-   
+
    void morphFromBaseMesh()
    {
      pt[] temp = baseG;

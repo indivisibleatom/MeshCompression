@@ -1,4 +1,4 @@
-int ISLAND_SIZE = 30;
+int ISLAND_SIZE = 5;
 int MAX_ISLANDS = 40000;
 int waterColor = 8;
 int landColor = 9;

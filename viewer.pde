@@ -74,12 +74,7 @@ void draw() {
     
   if (fBeginMorph)
   {
-    //print("Here");
     M.morphToBaseMesh();
-    /*if (currentT <= 1.0)
-    {
-      currentT += 0.01;
-    }*/
   }
   else if (fBeginUnmorph)
   {
@@ -268,8 +263,8 @@ void keyPressed() {
   {
     g_stepWiseRingExpander.setStepMode(false);
     StatsCollector s = new StatsCollector(); 
-    s.collectStats(1000, 30);
-    s.collectStats(1000, 62);
+    s.collectStats(10, 30);
+    s.collectStats(10, 62);
     s.done();
   }
   if (key =='8')
