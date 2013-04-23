@@ -61,6 +61,7 @@ class pt { float x=0,y=0,z=0;
    pt mul(float f) {x*=f; y*=f; z*=f; return this;};
    pt div(float f) {x/=f; y/=f; z/=f; return this;};
    pt div(int f) {x/=f; y/=f; z/=f; return this;};
+   void log() { print(x + " " + y + " " + z); }
 //   void projectOnCylinder(pt A, pt B, float r) {pt H = S(A,d(V(A,B),V(A,this))/d(V(A,B),V(A,B)),B); this.setTo(T(H,r,this));}
    }
 //  void projectOnCylinder(pt A, pt B, float r) {pt H = S(A,d(V(A,B),V(A,this))/d(V(A,B),V(A,B)),B); this.setTo(T(H,r,this));}   

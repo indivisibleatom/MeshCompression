@@ -11,6 +11,8 @@ GL gl;
 GLU glu; 
 
 boolean fShowCorners = true;
+boolean fBeginMorph = false;
+boolean fBeginUnmorph = false;
 
 // ****************************** GLOBAL VARIABLES FOR DISPLAY OPTIONS *********************************
 Boolean frontPick=true, translucent=false, showMesh=true, pickBack=false, showNormals=false, showVertices=false, labels=false, 
@@ -70,6 +72,20 @@ void draw() {
     return;
     } 
     
+  if (fBeginMorph)
+  {
+    //print("Here");
+    M.morphToBaseMesh();
+    /*if (currentT <= 1.0)
+    {
+      currentT += 0.01;
+    }*/
+  }
+  else if (fBeginUnmorph)
+  {
+    M.morphFromBaseMesh();
+  }
+    
   // -------------------------------------------------------- 3D display : set up view ----------------------------------
   camera(E.x, E.y, E.z, F.x, F.y, F.z, U.x, U.y, U.z); // defines the view : eye, ctr, up
   vec Li=U(A(V(E,F),0.1*d(E,F),J));   // vec Li=U(A(V(E,F),-d(E,F),J)); 
@@ -89,6 +105,7 @@ void draw() {
       if(M.showEdges) stroke(dblue); else noStroke(); 
       M.showTriangles(true,255,shrunk);
       M.showMarkers();
+      M.drawBarycenters();
       }      
     }
       
@@ -171,7 +188,7 @@ void keyReleased() {
 
  
 void keyPressed() {
-  for(int i=0; i<10; i++) if (key==char(i+48)) vis[i]=!vis[i];
+  //for(int i=0; i<10; i++) if (key==char(i+48)) vis[i]=!vis[i];
                // corner ops for demos
                // CORNER OPERATORS FOR TEACHING AND DEBUGGING
   if(key=='N') M.next();      
@@ -243,17 +260,16 @@ void keyPressed() {
   if(key=='V') {sE.set(E); sF.set(F); sU.set(U);}
   if(key=='v') {E.set(sE); F.set(sF); U.set(sU);}
   if (key == '!') {snapping=true;} // saves picture of screen
-  if (key=='1') {g_stepWiseRingExpander.setStepMode(false); M.showEdges = true; R = new RingExpander(M, -1); M.setResult(R.completeRingExpanderRecursive()); M.showRingExpanderCorners(); }
+  if (key=='1') {g_stepWiseRingExpander.setStepMode(false); M.showEdges = true; R = new RingExpander(M, (int) random(M.nt * 3)); M.setResult(R.completeRingExpanderRecursive()); M.showRingExpanderCorners(); }
   if (key=='3') {M.advanceRingExpanderResult();}
-  if (key=='4') {g_stepWiseRingExpander.setStepMode(true); M.showEdges = true; if (R == null) { R = new RingExpander(M, -1); } R.ringExpanderStepRecursive();}
+  if (key=='4') {g_stepWiseRingExpander.setStepMode(true); M.showEdges = true; if (R == null) { R = new RingExpander(M, 1968); } R.ringExpanderStepRecursive();}
   if (key=='6') {g_stepWiseRingExpander.setStepMode(false); M.formIslands(-1);}
   if (key=='7')
   {
     g_stepWiseRingExpander.setStepMode(false);
     StatsCollector s = new StatsCollector(); 
-    s.collectStats(10, 30);
-    s.collectStats(10, 62);
-    //s.collectStats(10, 5);
+    s.collectStats(1000, 30);
+    s.collectStats(1000, 62);
     s.done();
   }
   if (key =='8')
@@ -261,7 +277,17 @@ void keyPressed() {
     fShowCorners = false;
     M.colorTriangles();
   }
-
+  if (key =='9')
+  {
+    fBeginMorph = true;
+    fBeginUnmorph = false;
+    //M.morphToBaseMesh();
+  }
+  if (key == '5')
+  {
+    fBeginMorph = false;
+    fBeginUnmorph = true;
+  }
   } //------------------------------------------------------------------------ end keyPressed
   
 Boolean prev=false;
@@ -276,4 +302,5 @@ PImage myFace; // picture of author's face, read from file pic.jpg in data folde
 int pictureCounter=0;
 Boolean snapping=false; // used to hide some text whil emaking a picture
 void snapPicture() {saveFrame("PICTURES/P"+nf(pictureCounter++,3)+".jpg"); snapping=false;}
+
 

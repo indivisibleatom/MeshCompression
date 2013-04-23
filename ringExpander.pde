@@ -66,7 +66,7 @@ class RingExpander
     {
       if (triangleVisited[i])
       {
-        m_mesh.tm[i] = 0;
+        m_mesh.tm[i] = 1;
       }
       else
       {
@@ -138,13 +138,13 @@ class RingExpander
         m_parentTriangles[m_mesh.v(corner)] = parentTriangle;
         m_numTrianglesVisited++;
 
-        if (m_mesh.hasValidR(corner))
-        {
-          m_recursionStack.push(new State(m_mesh.r(corner), m_mesh.t(corner)));
-        }
         if (m_mesh.hasValidL(corner))
         {
           m_recursionStack.push(new State(m_mesh.l(corner), m_mesh.t(corner)));
+        }
+        if (m_mesh.hasValidR(corner))
+        {
+          m_recursionStack.push(new State(m_mesh.r(corner), m_mesh.t(corner)));
         }
       }
     }

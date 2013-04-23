@@ -1,3 +1,5 @@
+float currentT = 0;
+
 // CORNER TABLE FOR TRIANGLE MESHES by Jarek Rosignac
 // Last edited October, 2011
 // example meshesshowShrunkOffsetT
@@ -10,7 +12,7 @@ float shrunk; // >0 for showoing shrunk triangles
 class Mesh {
 //  ==================================== Internal variables ====================================
  // max sizes, counts, selected corners
- int maxnv = 45000;                         //  max number of vertices
+ int maxnv = 100000;                         //  max number of vertices
  int maxnt = maxnv*2;                       // max number of triangles
  int nv = 0;                              // current  number of vertices
  int nt = 0;                   // current number of triangles
@@ -24,11 +26,17 @@ class Mesh {
  // primary tables
  int[] V = new int [3*maxnt];               // V table (triangle/vertex indices)
  int[] O = new int [3*maxnt];               // O table (opposite corner indices)
+ int[] C = new int [maxnv];                  // For querying for any corner for a vertex
  pt[] G = new pt [maxnv];                   // geometry table (vertices)
+ pt[] baseG = new pt [maxnv];               // to store the locations of the vertices in their contracted form
  int[] island = new int[3*maxnt];
+ int[] triangleIsland = new int[maxnt];
+ 
+ pt[] islandBaryCenter = new pt[MAX_ISLANDS];
+ float[] islandArea = new float[MAX_ISLANDS];
 
-vec[] Nv = new vec [maxnv];                 // vertex normals or laplace vectors
-vec[] Nt = new vec [maxnt];                // triangles normals
+ vec[] Nv = new vec [maxnv];                 // vertex normals or laplace vectors
+ vec[] Nt = new vec [maxnt];                // triangles normals
 
  
  // auxiliary tables for bookkeeping
@@ -141,6 +149,8 @@ vec[] Nt = new vec [maxnt];                // triangles normals
   boolean vis(int c) {return visible[t(c)]; };   // true if tiangle of c is visible
   boolean hasValidR(int c) { return r(c) != p(c); }
   boolean hasValidL(int c) { return l(c) != n(c); }
+  
+  int cForV(int v) { if (C[v] == -1) { print("Fatal error! The corner for the vertex is -1"); } return C[v]; }
 
     // operations on the selected corner cc
   int t() {return t(cc); }
@@ -375,7 +385,7 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
        if(tm[t]==3) fill(cyan,opacity); 
        if(tm[t]==4) fill(magenta,250); 
        if(tm[t]==5) fill(green,opacity); 
-       if(tm[t]==6) fill(brown,opacity); 
+       if(tm[t]==6) fill(blue,250); 
        if(tm[t]==7) fill(blue,250); 
        if(tm[t]==8) fill(blue,220); 
        if(tm[t]==9) fill(yellow,250); 
@@ -685,6 +695,7 @@ void loadMeshVTS(String fn) {
       String rest = ss[i].substring(comma1+1, ss[i].length());
       comma2=rest.indexOf(',');    y=float(rest.substring(0, comma2)); z=float(rest.substring(comma2+1, rest.length()));
       G[k].set(x,y,z);
+      C[k] = -1;
     };
   s=nv+1;
   nt = int(ss[s]); nc=3*nt;
@@ -695,8 +706,21 @@ void loadMeshVTS(String fn) {
       String rest = ss[i].substring(comma1+1, ss[i].length()); comma2=rest.indexOf(',');  
       b=int(rest.substring(0, comma2)); c=int(rest.substring(comma2+1, rest.length()));
       V[3*k]=a;  V[3*k+1]=b;  V[3*k+2]=c;
+      if (C[a] == -1)
+      {
+        print("Setting " + a + " " + 3*k);
+        C[a] = 3*k;
+      }
+      if (C[b] == -1)
+      {
+        C[b] = 3*k + 1;
+      }
+      if (C[c] == -1)
+      {
+        C[c] = 3*k + 2;
+      }
     }
-  }; 
+  };
   
 
 void loadMeshOBJ() {
@@ -1016,7 +1040,22 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
        curCorner = s(curCorner);
      }while (curCorner != initCorner);
      return true;
-   } 
+   }
+   
+   private int getIslandForVertex(int vertex)
+   {
+     int initCorner = cForV(vertex);
+     int curCorner = initCorner;
+     do
+     {
+       if (island[curCorner] != -1)
+       {
+         return island[curCorner];
+       }
+       curCorner = s(curCorner);
+     }while (curCorner != initCorner);
+     return -1;
+   }
    
    private int getIslandByUnswing(int corner)
    {
@@ -1058,40 +1097,51 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
      return -1;
    }
    
-   void colorTriangles()
+   ColorResult colorTriangles()
    {
+     int countLand = 0, countGood = 0, countSeparator = 0, countLagoons = 0, countBad = 0;
      for (int i = 0; i < nt; i++)
      {
        int corner = c(i);
        int island1 = getIsland(corner);
        int island2 = getIsland(n(corner));
        int island3 = getIsland(p(corner));
-       tm[i] = 5;
+       tm[i] = 0;
        if (waterIncident(i))
        {
-         int unique = ((island1 != -1)? island1 : (island2 != -1)? island2 : island3);
-         if ((island1 == unique || island1 == -1) && (island2 == unique || island2 == -1) && (island3 == unique || island3 == -1) && unique != -1)
-         {
-           tm[i] = 5;
-         }
-         else
-         {
-           tm[i] = 4;
-         }
+         countBad++;
+         tm[i] = 4;
        }
        else if (island[corner] != -1 && island[n(corner)] != -1 && island[p(corner)] != -1 && island1 == island2 && island1 == island3)
        {
+         countLand++;
          tm[i] = landColor;
        }
        else if (island1 != -1 && island2 != -1 && island3 != -1 && island1 != island2 && island1 != island3 && island2 != island3)
        {
-         tm[i] = breakerColor;
+         countSeparator++;
+         tm[i] = 6;
        }
        else if (island1 != -1 && island2 != -1 && island3 != -1 && island1 == island2 || island1 == island3 || island2 == island3)
        {
-         tm[i] = 3;
+         if (island1 == island2 && island1 == island3)
+         {
+           countLagoons++;
+           tm[i] = 5;
+         }
+         else
+         {
+           countGood++;
+           tm[i] = 3;
+         }
        }
      }
+     print("\nStats : Total " + nt + " Land " + countLand + " Good water " + countGood + " Island separators " + countSeparator + " Lagoons " + countLagoons + " Bad water " + countBad);
+     
+     //TODO msati3: This is a hack. Should be made a separate function
+     computeBaryCenterForIslands();
+     calculateFinalLocationsForVertices();
+     return new ColorResult(nt, countLand, countGood, countSeparator, countLagoons, countBad);
    }
    
    void printState()
@@ -1100,6 +1150,199 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
        int island1 = getIsland(corner);
        int island2 = getIsland(n(corner));
        int island3 = getIsland(p(corner));
+   }
+   
+   private int getVertexType(int vertex)
+   {
+     int cornerForVertex = cForV(vertex);
+     if (!isWaterVertex(cornerForVertex))
+     {
+       return 0;
+     }
+     return 1;
+   }
+   
+   private float computeArea(int triangle)
+   {
+     pt A = G[v(c(triangle))];
+     pt B = G[v(n(c(triangle)))];
+     pt C = G[v(p(c(triangle)))];
+     
+     vec AB = V(A, B);
+     vec AC = V(A, C);
+     vec cross = N(AB, AC);
+     float area = 0.5 * cross.norm();
+     return abs(area);
+   }
+   
+   private pt baryCenter(int triangle)
+   {
+     int corner = c(triangle);
+     pt baryCenter = new pt();
+     baryCenter.set(G[v(c(triangle))]);
+     baryCenter.add(G[v(n(c(triangle)))]);
+     baryCenter.add(G[v(p(c(triangle)))]);
+     baryCenter.div(3);
+     //print(baryCenter.x + " " + baryCenter.y + " " + baryCenter.z);
+     return baryCenter;
+   }
+   
+   private void computeBaryCenterForIslands()
+   {
+     for (int i = 0; i < numIslands; i++)
+     {
+       islandArea[i] = 0;
+       islandBaryCenter[i] = new pt(0,0,0);
+       for (int j = 0; j < nt; j++)
+       {
+         if (triangleIsland[j] == i)
+         {
+           float area = computeArea(j);
+           islandArea[i] += area;
+           islandBaryCenter[i].add(baryCenter(j).mul(area));
+           //islandArea[i]++;
+           //islandBaryCenter[i].add(baryCenter(j));
+         }
+       }
+       islandBaryCenter[i].div(islandArea[i]);
+     }
+   }
+   
+   private void calculateFinalLocationsForVertices()
+   {
+     for (int i = 0; i < nv; i++)
+     {
+       int vertexType = getVertexType(i);
+       switch (vertexType)
+       {
+         case 0: int island = getIslandForVertex(i);
+                 if (island == -1)
+                 {
+                   print("Fatal error!! Get island == -1 for vertex of type IslandVertex");
+                 }
+                 baseG[i] = islandBaryCenter[island];
+                 break;
+         case 1: baseG[i] = G[i];
+                 break;
+         default: print("Fatal error!! Vertex not classified as water or island vertex");
+                 break;
+       }
+     }
+   }
+   
+   pt morph(pt p1, pt p2, float t)
+   {
+     pt result = new pt();
+     result.set(p1);
+     result.mul(1-t);
+     pt temp = new pt();
+     temp.set(p2);
+     temp.mul(t);
+     result.add(temp);
+     //result.log();
+     //print("\n");
+     return result;
+   }
+   
+   void drawBarycenters()
+   {
+     if (islandArea[0] != 0)
+     {
+       for (int i = 0; i < numIslands; i++)
+       {
+         translate(islandBaryCenter[i].x, islandBaryCenter[i].y, islandBaryCenter[i].z);
+         sphere(5);
+         translate(-islandBaryCenter[i].x, -islandBaryCenter[i].y, -islandBaryCenter[i].z);
+       }
+     }
+   }
+   
+   void morphFromBaseMesh()
+   {
+     pt[] temp = baseG;
+     baseG = G;
+     G = temp;
+     if (currentT > 0)
+     {
+       currentT -= 0.01;
+     }
+     else
+     {
+       fBeginUnmorph = false;
+       currentT = 0;
+     }
+
+     for (int i = 0; i < nv; i++)
+     {
+       int vertexType = getVertexType(i);
+       switch (vertexType)
+       {
+         case 0: int island = getIslandForVertex(i);
+                 if (island == -1)
+                 {
+                   print("Fatal error!! Get island == -1 for vertex of type IslandVertex");
+                 }
+                 if (islandBaryCenter[island] == null)
+                 {
+                   print("Barycenter null for " + island + " " + numIslands);
+                 }
+                 baseG[i] = morph(G[i], islandBaryCenter[island], currentT);
+                 break;
+         case 1: baseG[i] = new pt();
+                 baseG[i].set(G[i]);
+                 break;
+         default: print("Fatal error!! Vertex not classified as water or island vertex");
+                 break;
+       }
+     }
+     temp = G;
+     G = baseG;
+     baseG = temp;
+   }
+
+   void morphToBaseMesh()
+   {
+     if (currentT != 0)
+     {
+       pt[] temp = baseG;
+       baseG = G;
+       G = temp;
+     }
+     if (currentT < 1)
+     {
+       currentT += 0.01;
+     }
+     else
+     {
+       fBeginMorph = false;
+       currentT = 1;
+     }
+     for (int i = 0; i < nv; i++)
+     {
+       int vertexType = getVertexType(i);
+       switch (vertexType)
+       {
+         case 0: int island = getIslandForVertex(i);
+                 if (island == -1)
+                 {
+                   print("Fatal error!! Get island == -1 for vertex of type IslandVertex");
+                 }
+                 if (islandBaryCenter[island] == null)
+                 {
+                   print("Barycenter null for " + island + " " + numIslands);
+                 }
+                 baseG[i] = morph(G[i], islandBaryCenter[island], currentT);
+                 break;
+         case 1: baseG[i] = new pt();
+                 baseG[i].set(G[i]);
+                 break;
+         default: print("Fatal error!! Vertex not classified as water or island vertex");
+                 break;
+       }
+     }
+     pt[] temp = G;
+     G = baseG;
+     baseG = temp;
    }
      
   } // ==== END OF MESH CLASS

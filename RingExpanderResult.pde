@@ -1,10 +1,46 @@
-int ISLAND_SIZE = 64;
+int ISLAND_SIZE = 30;
+int MAX_ISLANDS = 40000;
 int waterColor = 8;
 int landColor = 9;
 int breakerColor = 7;
 
 int numIslands = 0;
 StepWiseRingExpander g_stepWiseRingExpander = new StepWiseRingExpander();
+
+class SubmersionCounter
+{
+  private int m_numSubmersions;
+  private int m_badSubmersions;
+  
+  public SubmersionCounter()
+  {
+    m_numSubmersions = 0;
+    m_badSubmersions = 0;
+  }
+  
+  public void incSubmersion()
+  {
+    m_numSubmersions++;
+  }
+  
+  public void incBadSubmersion()
+  {
+    m_badSubmersions++;
+    m_numSubmersions++;
+  }
+  
+  public int numSubmersions()
+  {
+    return m_numSubmersions;
+  }
+  
+  public int numBadSubmersions()
+  {
+    return m_badSubmersions;
+  }
+}
+
+SubmersionCounter g_submersionCounter;
 
 class StepWiseRingExpander
 {
@@ -113,6 +149,7 @@ class SubmersionStateTry
   public void setFirstState(boolean fFirstState) { m_fFirstState = fFirstState; }
   public void setChildren(SubmersionStateTry left, SubmersionStateTry right) { m_leftChild = left; m_rightChild = right; }
   public void setResult(int result) { m_result = result; }
+  public void setBitString(Stack<Integer> bitString) { m_bitString = bitString; }
   public int corner() { return m_corner; }
   public int numToSubmerge() { return m_numToSubmerge; }
   public Stack<Integer> bitString() { return m_bitString; }
@@ -437,19 +474,20 @@ class RingExpanderResult
   }
 
   private void markVisited(int triangle, int islandNumber)
-  {   
+  {
+    m_mesh.triangleIsland[triangle] =  
     m_mesh.island[m_mesh.c(triangle)] = islandNumber;
     m_mesh.island[m_mesh.n(m_mesh.c(triangle))] = islandNumber;
     m_mesh.island[m_mesh.p(m_mesh.c(triangle))] = islandNumber;
   }
   
   private void markUnVisited(int triangle)
-  {   
+  {
+    m_mesh.triangleIsland[triangle] = -1;
     m_mesh.island[m_mesh.c(triangle)] = -1;
     m_mesh.island[m_mesh.n(m_mesh.c(triangle))] = -1;
     m_mesh.island[m_mesh.p(m_mesh.c(triangle))] = -1;
   }
-
 
   //Perform an actual submerge from a corner, the number of triangles to submerge and the bitString -- the path to follow for the submersion
   private int performSubmerge(int corner, int numToSubmerge, Stack<Integer> origBitString)
@@ -457,6 +495,8 @@ class RingExpanderResult
     Stack<SubmersionState> submergeStack = new Stack<SubmersionState>();
     submergeStack.push(new SubmersionState(corner, numToSubmerge, origBitString, 0, true));
     int retVal = 0;
+    //print ("Num to submerge " + numToSubmerge);
+    int countTwo = 0;
     
     while (!submergeStack.empty())
     {
@@ -489,16 +529,10 @@ class RingExpanderResult
           }
           else
           {
+            countTwo++;
             int popped = -1;
             //TODO msati3: Fix empty stack bug for seed 166
-            if (!bitString.empty())
-            {
-              popped = bitString.pop();
-            }
-            else
-            {
-              print("How");
-            }
+            popped = bitString.pop();
             cur.setNumChild(2);
             cur.setFirstState(false);
             cur.setLR(popped);
@@ -553,7 +587,7 @@ class RingExpanderResult
                 {
                   if (retVal < numToSubmerge && retVal != -1)
                   {
-                    print("Fatal bug in submersion! Should not happen!!");
+                    print("Fatal bug in submersion! Should not happen!!" + retVal);
                   }
                 }
                 retVal = -1;
@@ -564,20 +598,25 @@ class RingExpanderResult
                {
                  if (retVal < numToSubmerge && retVal != -1)
                  {
-                   print("Fatal bug in submersion! Should not happen!!");
+                   print("Fatal bug in submersion! Should not happen!!" + retVal);
                  }
                }
                retVal = -1;
             }
-            else 
+            else
             {
-              markSubmerged(m_mesh.t(corner));
-              if  (retVal + 1 == numToSubmerge)
+              if (retVal == -1)
               {
+               //Case when l + r sum to total num submerged
+              }
+              else if (retVal + 1 == numToSubmerge)
+              {
+                markSubmerged(m_mesh.t(corner));
                 retVal = -1;
               }
               else
               {
+                markSubmerged(m_mesh.t(corner));
                 retVal++;
               }
             }
@@ -612,7 +651,7 @@ class RingExpanderResult
           }
         }
         else if (isSingleParent(corner))
-        {    
+        {
           SubmersionStateTry childState = new SubmersionStateTry(getChild(corner), numToSubmerge, bitString, true);
           cur.setFirstState(false);
           cur.setChildren(childState, null);
@@ -620,7 +659,7 @@ class RingExpanderResult
           submergeStack.push(childState);
         }
         else
-        {          
+        {
           Stack<Integer> lStack = new Stack<Integer>();
           Stack<Integer> rStack = new Stack<Integer>();
           SubmersionStateTry lChild = new SubmersionStateTry(m_mesh.l(corner), numToSubmerge, lStack, true);
@@ -641,6 +680,7 @@ class RingExpanderResult
         else if (isSingleParent(corner))
         { 
           int result = cur.left().result();
+          Stack<Integer> lStack = cur.left().bitString();
           if (result > numToSubmerge)
           {
           }
@@ -652,6 +692,7 @@ class RingExpanderResult
           {
             result++;
           }
+          cur.setBitString(lStack);
           cur.setResult(result);
         }
         else
@@ -660,6 +701,18 @@ class RingExpanderResult
           int numR = cur.right().result();
           Stack<Integer> lStack = cur.left().bitString();
           Stack<Integer> rStack = cur.right().bitString();
+        
+            /*print ("\nrStack ");
+            for (int i = 0; i < rStack.size(); i++)
+            {
+              print(rStack.get(i) + " ");
+            }
+            print ("\nlStack ");
+            for (int i = 0; i < lStack.size(); i++)
+            {
+              print(lStack.get(i) + " ");
+            }*/
+
           if (numL == -1)
           {
             combine(bitString, lStack);
@@ -706,7 +759,12 @@ class RingExpanderResult
             combine(bitString, rStack);
             combine(bitString, lStack);
             bitString.push(0);
+ 
             if (numL + numR + 1 == numToSubmerge)
+            {
+              cur.setResult(-1);
+            }
+            else if (numL + numR == numToSubmerge)
             {
               cur.setResult(-1);
             }
@@ -715,8 +773,15 @@ class RingExpanderResult
               cur.setResult(numL + numR + 1);
             }
           }
+
+          /*print("\nBitString ");
+          for (int i = 0; i < bitString.size(); i++)
+          {
+            print(bitString.get(i) + " ");
+          }*/
         }
       } //if stage 2
+      bitString = cur.bitString();
       finalRet = cur.result();
     } //while !stackEmpty
     return finalRet;
@@ -725,11 +790,11 @@ class RingExpanderResult
   private void combine(Stack<Integer> mainStack, Stack<Integer> otherStack)
   {
     Stack<Integer> temp = new Stack<Integer>();
-    for (int i = 0; i < otherStack.size(); i++)
+    while(!otherStack.empty())
     {
       temp.push(otherStack.pop());
     }
-    for (int i = 0; i < temp.size(); i++)
+    while(!temp.empty())
     {
       mainStack.push(temp.pop());
     }
@@ -899,6 +964,11 @@ class RingExpanderResult
               int numTrianglesToSubmerge = lenR + lenL - (ISLAND_SIZE - 1);
               int numL = trySubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringL);
               int numR = trySubmerge(m_mesh.r(corner), numTrianglesToSubmerge, bitStringR);
+              /*print("Final data and bitString " + lenR + " " + lenL + " " + numL + " " + numR);
+              for (int i = 0; i < bitStringL.size(); i++)
+              {
+                print (" " + bitStringL.get(i) + " ");
+              }*/
 
               //Actually perform the submersion using the bitstring as a guide. TODO msati3: Can the bitstring be removed?
               if (numL == -1)
@@ -915,6 +985,7 @@ class RingExpanderResult
               }
               else if (numL > numTrianglesToSubmerge || numR > numTrianglesToSubmerge)
               {
+                print("Here");
                 //Select to submerge the side that leads to lesser submersions
                 if (numL < numR)
                 {
@@ -928,15 +999,18 @@ class RingExpanderResult
                   int numTrianglesLeft = lenR + lenL + 1 - numR;
                   cur.setResult(numTrianglesLeft);
                 }
+                g_submersionCounter.incSubmersion();
               }
               else //extremely bad case. Submerge the entire island :O..can't be helped.
               {
+                print("Here as well");
                 performSubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringL);
                 performSubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringR);
                 markSubmerged(m_mesh.t(corner));
                 curShoreVerts[0] = -1;
                 curShoreVerts[1] = -1;
                 cur.setResult(-1);
+                g_submersionCounter.incBadSubmersion();
               }
             }
             else
@@ -1056,7 +1130,7 @@ class RingExpanderResult
     m_visitStack = new Stack<VisitState>();
     m_visitStack.push(new VisitState(m_seed));
     visitAndColor();
-    m_mesh.tm[m_mesh.t(m_seed)] = 1;
+    m_mesh.tm[m_mesh.t(m_seed)] = 3;
   }
 
   public void colorRingExpander()
@@ -1108,7 +1182,12 @@ class RingExpanderResult
     {
       m_mesh.island[i] = -1;
     }
+    for (int i = 0; i < m_mesh.nt; i++)
+    {
+      m_mesh.triangleIsland[i] = -1;
+    }
 
+    g_submersionCounter = new SubmersionCounter();
     int length = formIslesAndGetLength(cornerToStart, shoreVertices);
     numIslands++;
 
@@ -1121,6 +1200,7 @@ class RingExpanderResult
         {
           numIslands--;
           submergeAll(cornerToStart);
+          g_submersionCounter.incBadSubmersion();
         }
       }
     }
@@ -1130,12 +1210,14 @@ class RingExpanderResult
       {
         numIslands--;
         submergeAll(cornerToStart);
+        g_submersionCounter.incBadSubmersion();
       }
     }
 
-    print("The selected corner for starting is " + m_mesh.cc);
+    print("\nThe selected corner for starting is " + m_mesh.cc);
     print("The length of the last island is " + length);
     print("Number of islands is " + numIslands);
+    print("Number of submersions " + g_submersionCounter.numSubmersions() + " number of bad submersions " + g_submersionCounter.numBadSubmersions());
   }
   
   public int seed()
