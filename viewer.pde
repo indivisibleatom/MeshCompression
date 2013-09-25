@@ -13,6 +13,7 @@ GLU glu;
 boolean fShowCorners = true;
 boolean fBeginMorph = false;
 boolean fBeginUnmorph = false;
+boolean fShowOrigMesh = false;
 
 // ****************************** GLOBAL VARIABLES FOR DISPLAY OPTIONS *********************************
 Boolean frontPick=true, translucent=false, showMesh=true, pickBack=false, showNormals=false, showVertices=false, labels=false, 
@@ -26,6 +27,7 @@ void initView() {Q=P(0,0,0); I=V(1,0,0); J=V(0,1,0); K=V(0,0,1); F = P(0,0,0); E
 // ******************************** MESHES ***********************************************
 Mesh MM[] = new Mesh[3];
 Mesh M;
+Mesh origMesh = null;
 RingExpander R;
 int m=0; // current mesh
 int nsteps=250;
@@ -52,7 +54,7 @@ void setup() {
     M.resetMarkers(); // resets vertex and tirangle markers
     }
   M=MM[m];
-  M.loadMeshVTS("data/flat.vts");
+  M.loadMeshVTS("data/horse.vts");
   M.updateON();  
   M.resetMarkers();
   M.computeBox();  
@@ -97,11 +99,16 @@ void draw() {
       M.showTriangles(true,150,shrunk);
       } 
     else {                                                  // opaque mode
-      if(M.showEdges) stroke(dblue); else noStroke(); 
-      M.showTriangles(true,255,shrunk);
-      M.showMarkers();
-      M.drawBarycenters();
+      M.draw();
       }      
+    }
+    if (fShowOrigMesh)
+    {
+      if (origMesh != null)
+      {
+        print("Showing orig-mesh");
+        origMesh.draw();
+      }
     }
       
     // -------------------------------------------------------- graphic picking on surface ----------------------------------   
@@ -232,7 +239,6 @@ void keyPressed() {
 //  if(key=='P') {M.computePath();}
 
                // Loop
-  if(key=='I') ;
   if(key=='o') M.offset();
   if(key=='(') {showSilhouette=!showSilhouette;}
   if(key=='l') ;
@@ -250,14 +256,22 @@ void keyPressed() {
   if(key=='R') ;   
   if(key=='#') M.volume(); 
   if(key=='_') M.surface(); 
-  if(key=='Q') exit();
   if(key==',') 
   if(key=='V') {sE.set(E); sF.set(F); sU.set(U);}
   if(key=='v') {E.set(sE); F.set(sF); U.set(sU);}
   if (key == '!') {snapping=true;} // saves picture of screen
   if (key=='1') {g_stepWiseRingExpander.setStepMode(false); M.showEdges = true; R = new RingExpander(M, (int) random(M.nt * 3)); M.setResult(R.completeRingExpanderRecursive()); M.showRingExpanderCorners(); }
+  if (key=='2') {EgdeBreakerCompress e = new EgdeBreakerCompress(M); e.initCompression();}
   if (key=='3') {M.advanceRingExpanderResult();}
-  if (key=='4') {g_stepWiseRingExpander.setStepMode(true); M.showEdges = true; if (R == null) { R = new RingExpander(M, 1968); } R.ringExpanderStepRecursive();}
+  if (key=='p') {M.populateBaseG();}
+  if (key=='i') {M.connectMesh();}
+  if (key=='y') {origMesh = M; M = baseMesh;}
+  if (key=='`') {CuboidConstructor c = new CuboidConstructor(8, 8, 20, 30); c.constructMesh(); M =  c.getMesh();}
+  if (key=='5')
+  {
+    fBeginMorph = false;
+    fBeginUnmorph = true;
+  }
   if (key=='6') {g_stepWiseRingExpander.setStepMode(false); M.formIslands(-1);}
   if (key=='7')
   {
@@ -276,12 +290,17 @@ void keyPressed() {
   {
     fBeginMorph = true;
     fBeginUnmorph = false;
-    //M.morphToBaseMesh();
   }
-  if (key == '5')
+  
+  //Debugging modes
+  if (key=='4') {g_stepWiseRingExpander.setStepMode(true); M.showEdges = true; if (R == null) { R = new RingExpander(M, (int)random(M.nt * 3)); } R.ringExpanderStepRecursive();} //Press 4 to trigger step by step ring expander
+  if (key=='I') {M.advanceOnIslandEdge();} //Advance on the beach edges of an island
+  if (key=='A') {fShowOrigMesh = !fShowOrigMesh;}
+  
+  //Drawing options
+  if (key == 'Q')
   {
-    fBeginMorph = false;
-    fBeginUnmorph = true;
+    M.getDrawingState().m_fShowVertices = !M.getDrawingState().m_fShowVertices;
   }
   } //------------------------------------------------------------------------ end keyPressed
   

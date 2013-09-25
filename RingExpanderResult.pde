@@ -2,7 +2,6 @@ int ISLAND_SIZE = 5;
 int MAX_ISLANDS = 40000;
 int waterColor = 8;
 int landColor = 9;
-int breakerColor = 7;
 
 int numIslands = 0;
 StepWiseRingExpander g_stepWiseRingExpander = new StepWiseRingExpander();
@@ -199,10 +198,10 @@ class RingExpanderResult
 
   Mesh m_mesh;
 
-  public RingExpanderResult(Mesh m, int seed, int[] vertexArray)
+  public RingExpanderResult(Mesh m, int seed, int[] parentTrianglesArray)
   {
     m_seed = seed;
-    m_parentTArray = vertexArray;
+    m_parentTArray = parentTrianglesArray;
     m_mesh = m;
     m_numTrianglesToColor = -1;
   }
@@ -216,7 +215,7 @@ class RingExpanderResult
   {
     if ( (m_mesh.hasValidR(parentCorner) && childCorner == m_mesh.r(parentCorner)) || (m_mesh.hasValidL(parentCorner) && childCorner == m_mesh.l(parentCorner)) )
     {
-      if (m_parentTArray[m_mesh.v(childCorner)] == m_mesh.t(parentCorner))
+      if (m_parentTArray[childCorner] == m_mesh.t(parentCorner))
       {
         return true;
       }
@@ -284,7 +283,7 @@ class RingExpanderResult
     }
     for (int i = 0; i < 3; i++)
     {
-      if (m_mesh.t(m_mesh.o(corner)) == m_parentTArray[m_mesh.v(corner)])
+      if (m_mesh.t(m_mesh.o(corner)) == m_parentTArray[corner])
       {
         return corner;
       }

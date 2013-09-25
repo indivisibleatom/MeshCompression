@@ -50,11 +50,11 @@ class RingExpander
 
     m_numTrianglesToVisit = -1;
     m_numTrianglesVisited = 0;
-    m_parentTriangles = new int[m_mesh.nv];
+    m_parentTriangles = new int[m_mesh.nt * 3];
 
     m_ringExpanderResult = null;
 
-    for (int i = 0; i < m_mesh.nv; i++)
+    for (int i = 0; i < m_mesh.nt * 3; i++)
     {
       m_parentTriangles[i] = -1;
     }
@@ -66,11 +66,11 @@ class RingExpander
     {
       if (triangleVisited[i])
       {
-        m_mesh.tm[i] = 1;
+        m_mesh.tm[i] = ISLAND;
       }
       else
       {
-        m_mesh.tm[i] = 2;
+        m_mesh.tm[i] = CHANNEL;
       }
     }
   }
@@ -135,7 +135,7 @@ class RingExpander
       {
         m_vertexVisited[m_mesh.v(corner)] = true;
         m_triangleVisited[m_mesh.t(corner)] = true;
-        m_parentTriangles[m_mesh.v(corner)] = parentTriangle;
+        m_parentTriangles[corner] = parentTriangle;
         m_numTrianglesVisited++;
 
         if (m_mesh.hasValidL(corner))
