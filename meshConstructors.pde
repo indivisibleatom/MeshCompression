@@ -14,7 +14,7 @@ class CuboidConstructor
     m_thickness = thickness;
     m_triangleSize = triangleSize;
 
-    m_mesh = new Mesh();
+    m_mesh = new IslandMesh();
   }
   
   public void constructMesh()

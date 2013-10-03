@@ -1,15 +1,3 @@
-//TYPES OF TRIANGLES
-int SPLIT = 1;
-int GATE = 2;
-int CHANNEL = 3;
-int WATER = 4;
-int LAGOON = 5;
-int JUNCTION = 6;
-int CAP = 7;
-int ISLAND = 9;
-
-float currentT = 0;
-
 // CORNER TABLE FOR TRIANGLE MESHES by Jarek Rosignac
 // Last edited October, 2011
 // example meshesshowShrunkOffsetT
@@ -19,21 +7,17 @@ Boolean [] vis = new Boolean [10];
 Boolean onTriangles=true, onEdges=true; // projection control
 float shrunk; // >0 for showoing shrunk triangles
 
-Mesh baseMesh = new Mesh();
-boolean baseMeshCreated = false;
-Map<Integer, Integer> vertexForIsland; //A representative vertex of main mesh in a particular island
-Map<Integer, Integer> islandForWaterVert; //Mapping of water vertices to island numbers in base mesh
-
 class DrawingState
 {
   public boolean m_fShowEdges;
   public boolean m_fShowVertices;
-  public boolean m_fShowTriangles;
+  public boolean m_fShowCorners;
   
   public DrawingState()
   {
     m_fShowEdges = true;
-    m_fShowVertices = true;
+    m_fShowVertices = false;
+    m_fShowCorners = false;
   }
 };
 
@@ -50,19 +34,12 @@ class Mesh {
  int cc=0, pc=0, sc=0;                      // current, previous, saved corners
  float vol=0, surf=0;                      // vol and surface
  
- boolean m_fDrawIsles = false;
- 
  // primary tables
  int[] V = new int [3*maxnt];               // V table (triangle/vertex indices)
  int[] O = new int [3*maxnt];               // O table (opposite corner indices)
  int[] CForV = new int [maxnv];                  // For querying for any corner for a vertex
  pt[] G = new pt [maxnv];                   // geometry table (vertices)
  pt[] baseG = new pt [maxnv];               // to store the locations of the vertices in their contracted form
- int[] island = new int[3*maxnt];
- int[] triangleIsland = new int[maxnt];
- 
- pt[] islandBaryCenter = new pt[MAX_ISLANDS];
- float[] islandArea = new float[MAX_ISLANDS];
 
  vec[] Nv = new vec [maxnv];                 // vertex normals or laplace vectors
  vec[] Nt = new vec [maxnt];                // triangles normals
@@ -94,8 +71,8 @@ class Mesh {
  int[] Distance = new int[maxnt];           // triangle markers for distance fields 
  int[] SMt = new int[maxnt];                // sum of triangle markers for isolation
  int prevc = 0;                             // previously selected corner
- int rings=2;                           // number of rings for colorcoding
-
+ int rings=2;                               // number of rings for colorcoding
+ Viewport m_viewport;                       // the viewport the mesh is registered to
 
  // box
  pt Cbox = new pt(width/2,height/2,0);                   // mini-max box center
@@ -104,6 +81,10 @@ class Mesh {
  // rendering modes
  Boolean flatShading=true, showEdges=false;  // showEdges shoes edges as gaps. Smooth shading works only when !showEdge
  DrawingState m_drawingState = new DrawingState();
+ protected MeshUserInputHandler m_userInputHandler;
+
+ //wrapper class providing utilities to meshes
+ MeshUtils m_utils = new MeshUtils(this);
 
 //  ==================================== OFFSET ====================================
  void offset() {
@@ -116,7 +97,10 @@ class Mesh {
    for (int i=0; i<nv; i++) G[i]=P(G[i],d,Nv[i]);
    }
 //  ==================================== INIT, CREATE, COPY ====================================
- Mesh() {}
+ Mesh() 
+ {
+     m_userInputHandler = new MeshUserInputHandler(this);
+ }
 
  void copyTo(Mesh M) {
    for (int i=0; i<nv; i++) M.G[i]=G[i];
@@ -152,7 +136,6 @@ class Mesh {
    for (int i=0; i<nc; i++) cm[i]=0;
    for (int i=0; i<nt; i++) tm[i]=0;
    for (int i=0; i<nt; i++) visible[i]=true;
-   for (int i = 0; i < island.length; i++) island[i] = -1;
    }
  
  int addVertex(pt P) { G[nv] = new pt(); G[nv].set(P); nv++; return nv-1;};
@@ -177,10 +160,19 @@ class Mesh {
   int c (int t) {return t*3;}                    // first corner of triangle t
   boolean b (int c) {return O[c]==c;};           // if faces a border (has no opposite)
   boolean vis(int c) {return visible[t(c)]; };   // true if tiangle of c is visible
-  boolean hasValidR(int c) { return r(c) != p(c); }
-  boolean hasValidL(int c) { return l(c) != n(c); }
+  boolean hasValidR(int c) { return r(c) != p(c); } //true for meshes with border if not returning previous (has actual R)
+  boolean hasValidL(int c) { return l(c) != n(c); } //true for meshes with borher if not returning next (has actual L)
   
-  int cForV(int v) { if (CForV[v] == -1) { print("Fatal error! The corner for the vertex is -1"); } return CForV[v]; }
+  int cForV(int v) { 
+    if (CForV[v] == -1) 
+    {
+      if ( DEBUG && DEBUG_MODE >= LOW )
+      {
+        print("Fatal error! The corner for the vertex is -1"); 
+      }
+    } 
+    return CForV[v]; 
+  }
 
     // operations on the selected corner cc
   int t() {return t(cc); }
@@ -331,18 +323,15 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
      }
 
 // ============================================= DISPLAY CORNERS and LABELS =============================
-  void showMarkers()
+  void showCorners()
   {
     for (int i = 0; i < 3*nt; i++)
     {
-      if (cm[i] != 0)
-      {
-        showCorner(i, 3);
-      }
+      showCorner(i, 3);
     }
   }
 
-  void showCorner(int c, float r) {if (fShowCorners) {show(cg(c),r);} };   // renders corner c as small ball
+  void showCorner(int c, float r) {if (m_drawingState.m_fShowCorners) {show(cg(c),r);} };   // renders corner c as small ball
   
   void showcc(){noStroke(); fill(blue); showCorner(sc,3); /* fill(green); showCorner(pc,5); */ fill(dred); showCorner(cc,3); } // displays corner markers
   
@@ -412,7 +401,7 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
   void showShrunkOffsetT(float h) {int t=t(cc); if(visible[t]) showShrunkOffset(g(3*t),g(3*t+1),g(3*t+2),2,h);}
 
   // display front and back triangles shrunken if showEdges  
-  Boolean frontFacing(int t) {return !cw(E,g(3*t),g(3*t+1),g(3*t+2)); } 
+  Boolean frontFacing(int t) {return !cw(m_viewport.getE(),g(3*t),g(3*t+1),g(3*t+2)); } 
   void showFrontTrianglesSimple() {for(int t=0; t<nt; t++) if(frontFacing(t)) {if(showEdges) showShrunkT(t,1); else shade(t);}};  
  
   void showFrontTriangles() {
@@ -463,10 +452,13 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
       noStroke();
     } 
     showTriangles(true,255,shrunk);
-    showMarkers();
     if(m_drawingState.m_fShowVertices)
     {
       showVertices();
+    }
+    if(m_drawingState.m_fShowCorners)
+    {
+      showCorners();
     }
     if (baseMesh != null)
     {
@@ -1055,877 +1047,20 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
    for (int i=0; i<nv; i++) { G[i].x=(G[i].x-cx)*s; G[i].y=(G[i].y-cy)*s; }
    return s;
    } 
-    
-   //TODO msati3: clean this up...where does this go? Do wholistically
-   RingExpanderResult m_result = null;
-   void setResult(RingExpanderResult result)
-   {
-     m_result = result;
+   
+   //Interaction of mesh class with outside objects. TODO msati3: Better ways of handling this?
+   void setViewport(Viewport viewport) {
+     m_viewport = viewport;
    }
    
-   void advanceRingExpanderResult()
-   {
-     if (m_result != null)
-     {
-       m_result.advanceStep();
-     }
+   void onKeyPressed() {
+     m_userInputHandler.onKeyPress();
    }
    
-   void showRingExpanderCorners()
-   {
-     if (m_result != null)
-     {
-       m_result.colorRingExpander();
-     }
+   void onMousePressed() {
+     m_userInputHandler.onMousePressed();
    }
-   
-   void formIslands(int initCorner)
-   {
-     m_fDrawIsles = true;
-     if (m_result != null)
-     {
-       showRingExpanderCorners();
-       m_result.formIslands(initCorner);
-     }
-   }
-   
-   private boolean waterIncident(int triangle)
-   {
-     int corner = c(triangle);
-     return (isVertexForCornerWaterVertex(corner) || isVertexForCornerWaterVertex(n(corner)) || isVertexForCornerWaterVertex(p(corner)));
-   }
-   
-   private boolean isWaterVertex(int vertex)
-   {
-     int cornerForVertex = cForV(vertex);
-     return isVertexForCornerWaterVertex(cornerForVertex);
-   }
-
-   private boolean isVertexForCornerWaterVertex(int corner)
-   {
-     int initCorner = corner;
-     int curCorner = initCorner;
-     do
-     {
-       if (island[curCorner] != -1)
-       {
-         return false;
-       }
-       curCorner = s(curCorner);
-     }while (curCorner != initCorner);
-     return true;
-   }
-
-   private int getIslandCornerForVertex(int vertex)
-   {
-     int initCorner = cForV(vertex);
-     int curCorner = initCorner;
-     do
-     {
-       if (island[curCorner] != -1)
-       {
-         return curCorner;
-       }
-       curCorner = s(curCorner);
-     }while (curCorner != initCorner);
-     return -1;
-   }
-
-   private int getIslandForVertex(int vertex)
-   {
-     int initCorner = cForV(vertex);
-     int curCorner = initCorner;
-     do
-     {
-       if (island[curCorner] != -1)
-       {
-         return island[curCorner];
-       }
-       curCorner = s(curCorner);
-     }while (curCorner != initCorner);
-     return -1;
-   }
-   
-   private int getIslandForVertexExtended(int vertex) //Returns island number ( = vertex id in base mesh ). Also assigns numbers to water vertices
-   {
-     int island = getIslandForVertex(vertex);
-     if ( island == -1 )
-     {
-       return islandForWaterVert.get( vertex );
-     }
-     return island;
-   }
-    
-   private int getIslandByUnswing(int corner)
-   {
-     int initCorner = corner;
-     int curCorner = initCorner;
-     do
-     {
-       if (island[curCorner] != -1)
-       {
-         return island[curCorner];
-       }
-       int swing = u(curCorner);
-       if (swing == n(curCorner))
-       {
-         break;
-       }
-       curCorner = swing;
-     }while (curCorner != initCorner);
-     return -1;
-   }
-  
-   private int getIslandAtCorner(int corner)
-   {
-     return island[corner];
-   }
-
-   private int getIsland(int corner)
-   {
-     int initCorner = corner;
-     int curCorner = initCorner;
-     do
-     {
-       if (island[curCorner] != -1)
-       {
-         return island[curCorner];
-       }
-       int swing = s(curCorner);
-       if (swing == p(curCorner))
-       {
-         return getIslandByUnswing(initCorner);
-       }
-       curCorner = swing;
-     }while (curCorner != initCorner);
-     return -1;
-   }
-   
-   //Given two corners, returns is this triangle lies on a beach edge
-   private boolean hasBeachEdgeAroundCorners(int c1, int c2)
-   {
-     int island1 = getIsland(c1);
-     int island2 = getIsland(c2);
-     
-     if ((island1 != -1 && island2 != -1) && ((island[s(c1)] == -1 && island[u(c2)] == -1)||(island[u(c1)] == -1 && island[s(c2)] == -1)))
-     {
-       if (island1 == island2)
-       {
-         return true;
-       }
-     }
-     return false;
-   }
-   
-   //Given two corners, returns if the edge bounding them in the triangle containing them is a beach eadge. Returns false if they don't lie on the same triangle
-   private boolean hasBeachEdgeForCorners(int c1, int c2)
-   {
-     if (!((n(c1) == c2 || p(c1) == c2)))
-     {
-       return false;
-     }
-
-     int island1 = getIslandAtCorner(c1);
-     int island2 = getIslandAtCorner(c2);
-     
-     if ((island1 != -1 && island2 != -1) && ((island[s(c1)] == -1 && island[u(c2)] == -1)||(island[u(c1)] == -1 && island[s(c2)] == -1)))
-     {
-       if (island1 == island2)
-       {
-         return true;
-       }
-       else
-       {
-         //print("Islands on the beach edge are not the same. Failure!!" + island1 + " " + island2);
-       }
-     }
-     return false;
-   }
-   
-   private boolean hasBeachEdge(int triangle)
-   {
-     int corner = c(triangle);
-
-     int count = 0;
-     while(count < 3)
-     {
-       if ( hasBeachEdgeAroundCorners( corner, n(corner) ) )
-       {
-         return true;
-       }
-       corner = n(corner);
-       count++;
-     }
-     return false;
-   }
-   
-   ColorResult colorTriangles()
-   {
-     int countLand = 0, countGood = 0, countSeparator = 0, countLagoons = 0, countBad = 0;
-     int numVerts = 0, numWaterVerts = 0, numNormalVerts = 0;
-     for (int i = 0; i < nt; i++)
-     {
-       int corner = c(i);
-       int island1 = getIsland(corner);
-       int island2 = getIsland(n(corner));
-       int island3 = getIsland(p(corner));
-       tm[i] = 0;
-       if (island[corner] != -1 && island[n(corner)] != -1 && island[p(corner)] != -1 && island1 == island2 && island1 == island3)
-       {
-         countLand++;
-         tm[i] = ISLAND;
-       }
-       else if (hasBeachEdge(i)) //shallow
-       {
-         if (island1 != -1 && island2 != -1 && island3 != -1 && (island1 == island2 || island1 == island3 || island2 == island3))
-         {
-           if (island1 == island2 && island1 == island3)
-           {
-             countLagoons++;
-             tm[i] = LAGOON; //Lagoon
-           }
-           else
-           {
-             if (island1 != -1 && island2 != -1 && island3 != -1 && (island1 != island2 || island1 != island3))
-             {
-               countGood++;
-               tm[i] = CHANNEL;
-             }
-             else
-             {
-               print ("This case unhandled!");
-             }
-           }
-         }
-         else
-         {
-           tm[i] = CAP; //Cap triangle
-         }
-       }
-       else //deep
-       {
-           if (island1 != -1 && island2 != -1 && island3 != -1 && island1 == island2 && island1 == island3)
-           {
-             tm[i] = SPLIT;
-           }
-           else if (island1 != -1 && island2 != -1 && island3 != -1 && (island1 == island2 || island1 == island3 || island2 == island3))
-           {
-             tm[i] = GATE;
-           }
-           else if (island1 != -1 && island2 != -1 && island3 != -1)
-           {
-             countSeparator++;
-             tm[i] = JUNCTION;
-           }
-           else
-           {
-             countBad++;
-             tm[i] = WATER;
-           }
-       }
-     }
-     
-     for (int i = 0; i < nv; i++)
-     {
-       numVerts++;
-       if (isWaterVertex(i))
-       {
-         numWaterVerts++;
-       }
-       else
-       {
-         numNormalVerts++;
-       }
-     }
-     print("\nStats : Total " + nt + " Land " + countLand + " Good water " + countGood + " Island separators " + countSeparator + " Lagoons " + countLagoons + " Bad water " + countBad + "Num Water Verts " + numWaterVerts);
-     
-     //TODO msati3: This is a hack. Should be made a separate function
-     computeBaryCenterForIslands();
-     calculateFinalLocationsForVertices();
-     return new ColorResult(nt, countLand, countGood, countSeparator, countLagoons, countBad, numVerts, numWaterVerts, numNormalVerts);
-   }
-   
-   void printState()
-   {
-       int corner = cc;
-       int island1 = getIsland(corner);
-       int island2 = getIsland(n(corner));
-       int island3 = getIsland(p(corner));
-   }
-   
-   private int getVertexType(int vertex)
-   {
-     int cornerForVertex = cForV(vertex);
-     if (!isVertexForCornerWaterVertex(cornerForVertex))
-     {
-       return 0;
-     }
-     return 1;
-   }
-   
-   private boolean isIslandVertex(int vertex)
-   {
-     return getVertexType(vertex) == 0;
-   }
-   
-   private float computeArea(int triangle)
-   {
-     pt A = G[v(c(triangle))];
-     pt B = G[v(n(c(triangle)))];
-     pt C = G[v(p(c(triangle)))];
-     
-     vec AB = V(A, B);
-     vec AC = V(A, C);
-     vec cross = N(AB, AC);
-     float area = 0.5 * cross.norm();
-     return abs(area);
-   }
-   
-   private pt baryCenter(int triangle)
-   {
-     int corner = c(triangle);
-     pt baryCenter = new pt();
-     baryCenter.set(G[v(c(triangle))]);
-     baryCenter.add(G[v(n(c(triangle)))]);
-     baryCenter.add(G[v(p(c(triangle)))]);
-     baryCenter.div(3);
-     //print(baryCenter.x + " " + baryCenter.y + " " + baryCenter.z);
-     return baryCenter;
-   }
-   
-   private void computeBaryCenterForIslands()
-   {
-     for (int i = 0; i < numIslands; i++)
-     {
-       islandArea[i] = 0;
-       islandBaryCenter[i] = new pt(0,0,0);
-       for (int j = 0; j < nt; j++)
-       {
-         if (triangleIsland[j] == i)
-         {
-           float area = computeArea(j);
-           islandArea[i] += area;
-           islandBaryCenter[i].add(baryCenter(j).mul(area));
-           //islandArea[i]++;
-           //islandBaryCenter[i].add(baryCenter(j));
-         }
-       }
-       islandBaryCenter[i].div(islandArea[i]);
-     }
-   }
-   
-   private void calculateFinalLocationsForVertices()
-   {
-     for (int i = 0; i < nv; i++)
-     {
-       int vertexType = getVertexType(i);
-       switch (vertexType)
-       {
-         case 0: int island = getIslandForVertex(i);
-                 if (island == -1)
-                 {
-                   print("Fatal error!! Get island == -1 for vertex of type IslandVertex");
-                 }
-                 baseG[i] = islandBaryCenter[island];
-                 break;
-         case 1: baseG[i] = G[i];
-                 break;
-         default: print("Fatal error!! Vertex not classified as water or island vertex");
-                 break;
-       }
-     }
-   }
-   
-   pt morph(pt p1, pt p2, float t)
-   {
-     pt result = new pt();
-     result.set(p1);
-     result.mul(1-t);
-     pt temp = new pt();
-     temp.set(p2);
-     temp.mul(t);
-     result.add(temp);
-     //result.log();
-     //print("\n");
-     return result;
-   }
-
-   void morphFromBaseMesh()
-   {
-     
-     pt[] temp = baseG;
-     baseG = G;
-     G = temp;
-     if (currentT > 0)
-     {
-       currentT -= 0.01;
-     }
-     else
-     {
-       fBeginUnmorph = false;
-       currentT = 0;
-     }
-
-     for (int i = 0; i < nv; i++)
-     {
-       int vertexType = getVertexType(i);
-       switch (vertexType)
-       {
-         case 0: int island = getIslandForVertex(i);
-                 if (island == -1)
-                 {
-                   print("Fatal error!! Get island == -1 for vertex of type IslandVertex");
-                 }
-                 if (islandBaryCenter[island] == null)
-                 {
-                   print("Barycenter null for " + island + " " + numIslands);
-                 }
-                 baseG[i] = morph(G[i], islandBaryCenter[island], currentT);
-                 break;
-         case 1: baseG[i] = new pt();
-                 baseG[i].set(G[i]);
-                 break;
-         default: print("Fatal error!! Vertex not classified as water or island vertex");
-                 break;
-       }
-     }
-     temp = G;
-     G = baseG;
-     baseG = temp;
-   }
-
-   void morphToBaseMesh()
-   {
-     if (currentT != 0)
-     {
-       pt[] temp = baseG;
-       baseG = G;
-       G = temp;
-     }
-     if (currentT < 1)
-     {
-       currentT += 0.01;
-     }
-     else
-     {
-       fBeginMorph = false;
-       currentT = 1;
-     }
-     for (int i = 0; i < nv; i++)
-     {
-       int vertexType = getVertexType(i);
-       switch (vertexType)
-       {
-         case 0: int island = getIslandForVertex(i);
-                 if (island == -1)
-                 {
-                   print("Fatal error!! Get island == -1 for vertex of type IslandVertex");
-                 }
-                 if (islandBaryCenter[island] == null)
-                 {
-                   print("Barycenter null for " + island + " " + numIslands);
-                 }
-                 baseG[i] = morph(G[i], islandBaryCenter[island], currentT);
-                 break;
-         case 1: baseG[i] = new pt();
-                 baseG[i].set(G[i]);
-                 break;
-         default: print("Fatal error!! Vertex not classified as water or island vertex");
-                 break;
-       }
-     }
-     pt[] temp = G;
-     G = baseG;
-     baseG = temp;
-   }
-   
-   private int getNumWaterVerts()
-   {
-     int numWaterVerts = 0;
-     for (int i = 0; i < nv; i++ )
-     {
-       if ( !isIslandVertex(i) )
-       {
-         numWaterVerts++;
-       }
-     }
-     return numWaterVerts;
-   }
-   
-   void populateBaseG()
-   {
-     baseMeshCreated = true;
-     vertexForIsland = new HashMap< Integer, Integer >();
-     islandForWaterVert = new HashMap< Integer, Integer >();
-     int numWaterVerts = getNumWaterVerts();
-     int countWater = 0;
-     pt[] baseMeshG = new pt[numIslands + numWaterVerts];
-     for (int i = 0; i < baseMeshG.length; i++)
-     {
-       baseMeshG[i] = null;
-     }
-     baseMesh.G = baseMeshG;
-     for (int i = 0; i < nv; i++ )
-     {
-       if ( isIslandVertex(i) )
-       {
-         int island = getIslandForVertex( i );
-         if ( vertexForIsland.get( island ) == null )
-         {
-           vertexForIsland.put( island, i );
-           baseMeshG[ island ] = P(islandBaryCenter[island]); 
-         }
-       }
-       else
-       {
-         vertexForIsland.put( numIslands + countWater, i );
-         islandForWaterVert.put( i, numIslands + countWater );
-         baseMeshG[ numIslands + countWater ] = G[i]; 
-         countWater++;
-       }
-     }
-     baseMesh.nv = baseMesh.G.length;
-     print ("Base mesh created with number of vertices " + (numIslands + numWaterVerts));
-   }
-   
-   int numAdvances = 1;
-   void advanceOnIslandEdge()
-   {
-     int currentAdvances = 0;
-     for (int i = 0; i < baseMesh.G.length; i++)
-     {
-       int v = vertexForIsland.get(i);
-       if ( isIslandVertex( v ) )
-       //&& connectInBaseMesh(v) )
-       {      
-         int currentVOnIsland = v;
-         int prevVOnIsland = v;
-         int prevPrevVOnIsland = v;
-         int returnedVertex = -1;
-         int bTrackedC2 = -1, bTrackedC3 = -1; //Track the last added triangle corners in the base mesh for this island.
-         int nextUsedIsland = -1; //Track the next used island post a junction / water triangle.
-         while ( ( returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland ) ) != -1 )
-         {
-           int incidentCorner = incidentTriangleType( currentVOnIsland, JUNCTION );
-
-           if (incidentCorner == -1 )
-           {
-             incidentCorner = incidentTriangleType( currentVOnIsland, WATER ); //TODO msati: Handle cases where both are true are the same time.
-           }
-           if ( incidentCorner != -1 )
-           {
-             int vertex2 = v( n( incidentCorner ) );
-             int vertex3 = v( p( incidentCorner ) );
-             int bv1 = i;
-             int island2 = getIslandForVertexExtended( vertex2 );
-             int island3 = getIslandForVertexExtended( vertex3 );
-
-             int bv2 = island2;
-             int bv3 = island3;
-
-             if ( bv2 != -1 && bv3 != -1 )
-             {
-               baseMesh.addTriangle(bv1, bv2, bv3);
-               if ( bTrackedC2 != -1 )
-               {
-                 addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland );
-               }
-               bTrackedC2 = nc-2;
-               bTrackedC3 = nc-1;
-               nextUsedIsland = -1;
-             }
-             else
-             {
-               print ("Get a -1 as one of the base vertices incident on a Junction / Water triangle. Error!");
-             }
-           }
-           else //not junction / water
-           {
-             if ( nextUsedIsland == -1 ) //Find out the next used island, so as to determine the correct opposite to be populated
-             {
-               int nonIslandTriangle = getNonIslandTriangleForEdge( currentVOnIsland, returnedVertex );
-               int nonIslandVertex = getNonIslandVertex( nonIslandTriangle, currentVOnIsland, returnedVertex );
-               nextUsedIsland = getIslandForVertexExtended( nonIslandVertex );
-             }
-           }
-           prevPrevVOnIsland = prevVOnIsland;
-           prevVOnIsland = currentVOnIsland;
-           currentVOnIsland = returnedVertex;
-           vm[v] = 1;
-           vm[currentVOnIsland] = 2;
-           vm[prevVOnIsland] = 3;
-           vm[prevPrevVOnIsland] = 1;
-
-           currentAdvances++;
-           if ( currentAdvances >= numAdvances )
-           {
-             print ("NumAdvances " + numAdvances);
-             numAdvances++;
-             return;
-           }
-         }//end while
-       }
-       else //Is a water vertex
-       {
-       }
-     }
-   }
-   
-   void connectMesh()
-   {
-     for (int i = 0; i < baseMesh.G.length; i++)
-     {
-       if ( vertexForIsland.get(i) == null )
-       {
-         continue;
-       }
-       int v = vertexForIsland.get(i);
-       if ( isIslandVertex( v ) && connectInBaseMesh(v) )
-       {      
-         int currentVOnIsland = v;
-         int prevVOnIsland = v;
-         int prevPrevVOnIsland = v;
-         int returnedVertex = -1;
-         int bTrackedC2 = -1, bTrackedC3 = -1; //Track the last added triangle corners in the base mesh for this island.
-         int nextUsedIsland = -1; //Track the next used island post a junction / water triangle.
-         while ( ( returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland ) ) != -1 )
-         {
-           //print("Here" + returnedVertex + " " + prevVOnIsland + " " + prevPrevVOnIsland + " " + island);
-           int incidentCorner = incidentTriangleType( currentVOnIsland, JUNCTION );
-
-           if (incidentCorner == -1 )
-           {
-             incidentCorner = incidentTriangleType( currentVOnIsland, WATER ); //TODO msati: Handle cases where both are true are the same time.
-           }
-           if ( incidentCorner != -1 )
-           {
-             int vertex2 = v( n( incidentCorner ) );
-             int vertex3 = v( p( incidentCorner ) );
-             int bv1 = i;
-             int island2 = getIslandForVertexExtended( vertex2 );
-             int island3 = getIslandForVertexExtended( vertex3 );
-
-             int bv2 = island2;
-             int bv3 = island3;
-
-             if ( bv2 != -1 && bv3 != -1 )
-             {
-               baseMesh.addTriangle(bv1, bv2, bv3);
-               if ( bTrackedC2 != -1 )
-               {
-                 addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland );
-               }
-               bTrackedC2 = nc-2;
-               bTrackedC3 = nc-1;
-               nextUsedIsland = -1;
-             }
-             else
-             {
-               print ("Get a -1 as one of the base vertices incident on a Junction / Water triangle. Error!");
-             }
-           }
-           else //not junction / water
-           {
-             if ( nextUsedIsland == -1 ) //Find out the next used island, so as to determine the correct opposite to be populated
-             {
-               int nonIslandTriangle = getNonIslandTriangleForEdge( currentVOnIsland, returnedVertex );
-               int nonIslandVertex = getNonIslandVertex( nonIslandTriangle, currentVOnIsland, returnedVertex );
-               nextUsedIsland = getIslandForVertexExtended( nonIslandVertex );
-             }
-           }
-           prevPrevVOnIsland = prevVOnIsland;
-           prevVOnIsland = currentVOnIsland;
-           currentVOnIsland = returnedVertex;
-         }
-       }
-       else if ( !isIslandVertex(v) ) //Is a water vertex
-       {
-         int initCorner = incidentTriangleType( v, WATER );
-         int currentCorner = initCorner;
-         print("Found corner " + currentCorner);
-         do
-         {
-           int island2 = getIslandForVertexExtended( v(n(currentCorner)) );
-           int island3 = getIslandForVertexExtended( v(p(currentCorner)) );
-           //print("adding triangle " + i + " " + island2 + "  " + island3);
-           baseMesh.addTriangle(i, island2, island3);
-           currentCorner = s(currentCorner);
-         } while (currentCorner != initCorner);
-       }
-     } //end for loop over base mesh vertices
-   }
-   
-   private void addOppositeForUnusedIsland( int bc2, int bc3, int btrackedc2, int btrackedc3, int nextUsedIsland )
-   {
-     int corner1 = -1, corner2 = -1;
-
-     if ( baseMesh.v( bc2 ) == nextUsedIsland )
-     {
-       corner1 = bc3;
-     }
-     else
-     {
-       corner1 = bc2;
-     }
-     
-     if ( baseMesh.v( btrackedc2 ) == nextUsedIsland )
-     {
-       corner2 = btrackedc3;
-     }
-     else
-     {
-       corner2 = btrackedc2;
-     }
-
-     baseMesh.O[ corner1 ] = corner2;
-     baseMesh.O[ corner2 ] = corner1;
-   }
-   
-   private int getNonIslandTriangleForEdge( int v1, int v2 )
-   {
-     int corner = cForV( v1 );
-     int currentCorner = corner;
-     int cornerNonEdge = -1;
-     do
-     {
-       if ( v( n( currentCorner ) ) == v2 )
-       {
-         cornerNonEdge = p( currentCorner );
-         break;
-       }
-       if ( v( p( currentCorner ) ) == v2 )
-       {
-         cornerNonEdge = n( currentCorner );
-         break;
-       }
-       currentCorner = s( currentCorner );
-     } while ( currentCorner != corner );
-     if ( cornerNonEdge == -1 )
-     {
-       print ("Could not find a corner for a triangle having the given edge. Error! ");
-       return -1;
-     }
-     if ( getIslandForVertex( v( cornerNonEdge ) ) == getIslandForVertex( v1 ) )
-     {
-       return t( o( cornerNonEdge ) );
-     }
-     else
-     {
-       return t( cornerNonEdge );
-     }
-   }
-   
-   private int getNonIslandVertex( int nonIslandTriangle, int currentVOnIsland, int returnedV )
-   {
-     int initCorner = c( nonIslandTriangle );
-     int currentCorner = initCorner;
-     do
-     {
-       if ( v( currentCorner ) != currentVOnIsland && v( currentCorner ) != returnedV )
-       {
-         return v( currentCorner );
-       }
-       currentCorner = n( currentCorner );
-     } while ( currentCorner != initCorner );
-     return -1;
-   }
-   
-   int triangleType( int triangle )
-   {
-     return tm[triangle];
-   }
-   
-   int incidentTriangleType( int vertex, int type )
-   {
-     int c = cForV( vertex );
-     int currentCorner = c;
-     do
-     {
-       currentCorner = s(currentCorner);
-       if ( triangleType (t(currentCorner)) == type )
-       {
-         return currentCorner;
-       }
-     } while ( currentCorner != c );
-     return -1;
-   }
-   
-   boolean connectInBaseMesh( int vertex )
-   {
-     if (isIslandVertex( vertex ) )
-     {
-       int island = getIslandForVertex( vertex );
-       int currentVertex = vertex;
-       int prevVertex = vertex;
-       int prevPrevVertex = vertex;
-       int vertexNew;
-       while ( (vertexNew = getNextVertexOnIsland( vertex, currentVertex, prevVertex, prevPrevVertex) ) != -1 )
-       {
-         if ( incidentTriangleType( vertex, JUNCTION ) != -1 || incidentTriangleType( vertex, WATER ) != -1 )
-         {
-           return true;                                                                                                                                                                                                                                                                                                                                                                                                                                          
-         }
-         prevPrevVertex = prevVertex;
-         prevVertex = currentVertex;
-         currentVertex = vertexNew;
-       }
-     }
-     else
-     {
-       if ( incidentTriangleType( vertex, WATER ) != -1 )
-       {
-         return true;
-       }
-     }
-     return false;
-   }
-   
-   int getNextVertexOnIsland( int finalV, int currentV, int prevV, int prevPrevV )
-   {
-     int v = findOtherBeachEdgeVertexForVertex( currentV, prevV, prevPrevV );
-     print ("The value of v is " + v );
-     if ( v == finalV ) 
-     {
-       print( "Completing island" + v + " " + finalV);
-     }
-     return ( v == finalV ? -1 : v );
-   }
-   
-   int findOtherBeachEdgeVertexForTriangleCorners( int c1, int c2 )
-   {
-     if ( hasBeachEdgeForCorners( c1, c2 ) )
-     {
-        return v(c2);
-     }
-     return -1;
-   }
-
-   int findOtherBeachEdgeVertexForVertex( int currentV, int prevV, int prevPrevV )
-   {
-     int c = getIslandCornerForVertex( currentV );
-     int currentCorner = c;
-     do
-     {
-       int otherBeachEdgeVertex1 = findOtherBeachEdgeVertexForTriangleCorners( currentCorner, n(currentCorner) );
-       int otherBeachEdgeVertex2 = findOtherBeachEdgeVertexForTriangleCorners( currentCorner, p(currentCorner) );
-       if ( (otherBeachEdgeVertex1 != -1) || (otherBeachEdgeVertex2 != -1) )
-       {
-         if ( ( currentV == prevV ) || ( currentV != prevV && otherBeachEdgeVertex1 != prevV && otherBeachEdgeVertex1 != prevPrevV && otherBeachEdgeVertex1 != -1) )
-         {
-           return otherBeachEdgeVertex1;
-         }
-         if ( ( currentV == prevV ) || ( currentV != prevV && otherBeachEdgeVertex2 != prevV && otherBeachEdgeVertex2 != prevPrevV && otherBeachEdgeVertex2 != -1) )
-         {
-           return otherBeachEdgeVertex2;
-         }
-       }
-       currentCorner = s( currentCorner );
-     } while ( currentCorner != c );
-     print( "Can't find beach edge vertex for currentVertex! Potential bug" );
-     return -1;
-   }
-
-  } // ==== END OF MESH CLASS
+} // ==== END OF MESH CLASS
   
 vec labelD=new vec(-4,+4, 12);           // offset vector for drawing labels  
 

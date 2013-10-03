@@ -45,9 +45,11 @@ class ColorResult
 class StatsCollector
 {
   private PrintWriter output;
+  private IslandMesh m_mesh;
   
-  StatsCollector()
+  StatsCollector( IslandMesh mesh )
   {
+    m_mesh = mesh;
     output = createWriter("stats.csv");
     output.println("Num Triangles in Mesh\t Num triangles not on LR traversal\t Num water triangles after island formation\t Num triangles introduced by island formation\t Num Islands");
   }
@@ -57,25 +59,25 @@ class StatsCollector
     for (int i = 0; i < numTries; i++)
     {
       ISLAND_SIZE = islandSize;
-      int seed = (int)random(M.nt * 3);
+      int seed = (int)random(m_mesh.nt * 3);
       
-      RingExpander expander = new RingExpander(M, seed); 
+      RingExpander expander = new RingExpander(m_mesh, seed); 
       RingExpanderResult result = expander.completeRingExpanderRecursive();
-      M.setResult(result);
-      M.showRingExpanderCorners();
+      m_mesh.setResult(result);
+      m_mesh.showRingExpanderCorners();
 
       int numWater = 0;
 
-      for (int j = 0; j < M.nt; j++)
+      for (int j = 0; j < m_mesh.nt; j++)
       {
-        if (M.tm[j] == waterColor )
+        if (m_mesh.tm[j] == waterColor )
         {
           numWater++;
         }
       }
       
-      M.formIslands(result.seed());
-      ColorResult res = M.colorTriangles();
+      m_mesh.formIslands(result.seed());
+      ColorResult res = m_mesh.colorTriangles();
 
       output.println(ISLAND_SIZE + "\t" + numIslands + "\t" + res.total() + "\t" + numWater + "\t" + (float)numWater*100/res.total() + "\t" + res.land() + "\t" + res.pLand() + "\t" + res.water() + "\t" + res.pWater() + 
                      "\t" + res.straits() + "\t" + res.pStraits() + "\t" + res.lagoons() + "\t" + res.pLagoons() + "\t" + res.separators() + "\t" + res.pSeparators() + "\t" + res.totalVerts() + "\t" + res.normalVerts() + 

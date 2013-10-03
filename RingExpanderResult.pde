@@ -196,9 +196,9 @@ class RingExpanderResult
   private int m_numTrianglesColored;
   private Stack<VisitState> m_visitStack;
 
-  Mesh m_mesh;
+  IslandMesh m_mesh;
 
-  public RingExpanderResult(Mesh m, int seed, int[] parentTrianglesArray)
+  public RingExpanderResult(IslandMesh m, int seed, int[] parentTrianglesArray)
   {
     m_seed = seed;
     m_parentTArray = parentTrianglesArray;
@@ -1173,7 +1173,10 @@ class RingExpanderResult
     cornerToStart = getCornerOnLR(cornerToStart);
     if (cornerToStart == -1)
     {
-      print("Correct corner not found. Returning");
+      if (DEBUG && DEBUG_MODE >= LOW)
+      {
+        print("Correct corner not found. Returning");
+      }
       return ;  
     }
     

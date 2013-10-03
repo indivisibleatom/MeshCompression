@@ -22,7 +22,7 @@ class State
 
 class RingExpander
 {
-  private Mesh m_mesh;
+  private IslandMesh m_mesh;
   private int m_seed;
   private int m_numTrianglesToVisit;
   private int m_numTrianglesVisited;
@@ -35,7 +35,7 @@ class RingExpander
 
   Stack< State > m_recursionStack;
   
-  public RingExpander(Mesh m, int seed)
+  public RingExpander(IslandMesh m, int seed)
   {
     m_mesh = m;
     m_mesh.resetMarkers();
@@ -152,7 +152,7 @@ class RingExpander
 
   public RingExpanderResult completeRingExpanderRecursive()
   {
-    Mesh m = m_mesh;
+    IslandMesh m = m_mesh;
     int seed = m_seed;
 
     m_vertexVisited = new boolean[m.nv];
