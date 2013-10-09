@@ -55,8 +55,6 @@ class Viewport
     
   void onMousePressed()
   {
-    // rotate view 
-
     Mesh selectedMesh = m_meshInteractor.getSelectedMesh();
     if (selectedMesh != null)
     {
@@ -205,17 +203,8 @@ class Viewport
     //specular(255,255,0); shininess(5);  
     
     selectedMesh.draw();
-      
-    //TODO msati: Move this out to mesh keystroke handling
-    // -------------------------------------------------------- graphic picking on surface ----------------------------------   
     if (keyPressed&&key=='t') T.set(Pick()); // sets point T on the surface where the mouse points. The camera will turn toward's it when the 't' key is released
-    if (keyPressed&&key=='h') { selectedMesh.pickc(Pick()); }// sets c to closest corner in M 
-    if(pressed) {
-       if (keyPressed&&key=='s') selectedMesh.picks(Pick()); // sets M.sc to the closest corner in M from the pick point
-       if (keyPressed&&key=='c') selectedMesh.pickc(Pick()); // sets M.cc to the closest corner in M from the pick point
-       if (keyPressed&&(key=='w'||key=='x'||key=='X')) selectedMesh.pickcOfClosestVertex(Pick()); 
-    }
-    pressed=false;
+    selectedMesh.interactSelectedMesh();      
    
     SetFrame(Q,I,J,K);  // showFrame(Q,I,J,K,30);  // sets frame from picked points and screen axes
     

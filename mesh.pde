@@ -1131,6 +1131,10 @@ void makeAllVisible() { for(int i=0; i<nt; i++) visible[i]=true; }
    void onMousePressed() {
      m_userInputHandler.onMousePressed();
    }
+   
+   void interactSelectedMesh() {
+     m_userInputHandler.interactSelectedMesh();
+   }
 } // ==== END OF MESH CLASS
   
 vec labelD=new vec(-4,+4, 12);           // offset vector for drawing labels  

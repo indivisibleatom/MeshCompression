@@ -1,7 +1,7 @@
 int ISLAND_SIZE = 5;
 int MAX_ISLANDS = 40000;
 
-int numIslands = 0;
+int numIslands = 0; //TODO msati3: Move this inside islandMesh
 StepWiseRingExpander g_stepWiseRingExpander = new StepWiseRingExpander();
 
 class SubmersionCounter
@@ -193,6 +193,7 @@ class RingExpanderResult
   private int m_numTrianglesToColor;
   private int m_numTrianglesColored;
   private Stack<VisitState> m_visitStack;
+  private IslandExpansionManager m_expansionManager;
 
   IslandMesh m_mesh;
 
@@ -202,6 +203,7 @@ class RingExpanderResult
     m_parentTArray = parentTrianglesArray;
     m_mesh = m;
     m_numTrianglesToColor = -1;
+    m_expansionManager = new IslandExpansionManager();
   }
 
   private void setColor(int corner)
@@ -1088,26 +1090,65 @@ class RingExpanderResult
   
   private void numberIslands(int corner, int islandNumber)
   {
+    IslandExpansionStream currentStream = m_expansionManager.addIslandStream();
     Stack<Integer> markStack = new Stack<Integer>();
     markStack.push(corner);
     int count = 0;
+    char ch1, ch2, ch = 0;
+
+    currentStream.addG( count++, m_mesh.g(m_mesh.p(corner)), ch );
+    currentStream.addG( count++, m_mesh.g(m_mesh.n(corner)), ch );
 
     while (!markStack.empty())
     {
+      ch1 = 0; ch2 = 0; ch = 0;
       corner = markStack.pop();
       if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
       {
         markStack.push(m_mesh.r(corner));
+        ch1 = 'r';
       }
       if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
       {
         markStack.push(m_mesh.l(corner));
+        ch2 = 'l';
       }
+
+      //Populate appropriate triangle character
+      if (ch1 == 'l' && ch2 == 'r')
+      {
+        ch = 's';
+      }
+      else
+      {
+        ch = (ch1 == 0) ? ch2 : ch1;
+      }
+
+      currentStream.addG( count++, m_mesh.g(corner), ch );
       markVisited(m_mesh.t(corner), islandNumber);
-      count++;
     }
   }
   
+  private void renumberIslands(int islandNumber)
+  {
+     m_expansionManager.removeIslandStream( islandNumber );
+    if (islandNumber == -1)
+    {
+      if ( DEBUG && DEBUG_MODE >= LOW )
+      {
+        print("RingExpanderResult::renumberIsland - supplying -1 as islandNumber. Bug!");
+      }
+      return;
+    }
+    for (int i = 0; i < m_mesh.nt; i++)
+    {
+      if ( m_mesh.island[3*i] > islandNumber )
+      {
+        markVisited(i, m_mesh.island[3*i]-1);
+      }
+    }
+  }
+ 
   private int getLength(int corner)
   {
     int rightLen = 0;
@@ -1165,25 +1206,6 @@ class RingExpanderResult
       }
     }
     return false;
-  }
-  
-  private void renumberIslands(int islandNumber)
-  {
-    if (islandNumber == -1)
-    {
-      if ( DEBUG && DEBUG_MODE >= LOW )
-      {
-        print("RingExpanderResult::renumberIsland - supplying -1 as islandNumber. Bug!");
-      }
-      return;
-    }
-    for (int i = 0; i < m_mesh.nt; i++)
-    {
-      if ( m_mesh.island[3*i] > islandNumber )
-      {
-        markVisited(i, m_mesh.island[3*i]-1);
-      }
-    }
   }
   
   public void formIslands(int cornerToStart)
@@ -1253,6 +1275,11 @@ class RingExpanderResult
   public int seed()
   {
     return m_seed;
+  }
+  
+  public IslandExpansionManager getIslandExpansionManager()
+  {
+    return m_expansionManager;
   }
 }
 

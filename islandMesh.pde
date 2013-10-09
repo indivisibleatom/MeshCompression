@@ -28,7 +28,7 @@ class IslandMesh extends Mesh
  Map<Integer, Integer> m_islandForWaterVert; //Mapping of water vertices to island numbers in base mesh
 
  //TODO msati3: clean this up...where does this go? Do wholistically
- RingExpanderResult m_result = null;
+ RingExpanderResult m_ringExpanderResult = null;
  BaseMesh baseMesh = null;
  
  //Debugging functionality
@@ -49,32 +49,32 @@ class IslandMesh extends Mesh
  
  void setResult(RingExpanderResult result)
  {
-   m_result = result;
+   m_ringExpanderResult = result;
  }
    
  void advanceRingExpanderResult()
  {
-   if (m_result != null)
+   if (m_ringExpanderResult != null)
    {
-     m_result.advanceStep();
+     m_ringExpanderResult.advanceStep();
    }
  }
    
  void showRingExpanderCorners()
  {
-   if (m_result != null)
+   if (m_ringExpanderResult != null)
    {
-     m_result.colorRingExpander();
+     m_ringExpanderResult.colorRingExpander();
    }
  }
    
  void formIslands(int initCorner)
  {
    m_fDrawIsles = true;
-   if (m_result != null)
+   if (m_ringExpanderResult != null)
    {
      showRingExpanderCorners();
-     m_result.formIslands(initCorner);
+     m_ringExpanderResult.formIslands(initCorner);
    }
  }
  
@@ -120,20 +120,29 @@ class IslandMesh extends Mesh
    m_fMorphing = true;
  }
  
- //Morping to and from base mesh, without actual mesh creation
- pt morph(pt p1, pt p2, float t)
+ //Queryable state functions
+ int getNumIslands()
  {
-   pt result = new pt();
-   result.set(p1);
-   result.mul(1-t);
-   pt temp = new pt();
-   temp.set(p2);
-   temp.mul(t);
-   result.add(temp);
-   return result;
+   return numIslands;
+ }
+ 
+ public int getIslandForVertex(int vertex)
+ {
+   int initCorner = cForV(vertex);
+   int curCorner = initCorner;
+   do
+   {
+     if (island[curCorner] != -1)
+     {
+       return island[curCorner];
+     }
+     curCorner = s(curCorner);
+   }while (curCorner != initCorner);
+   return -1;
  }
 
- void morphFromBaseMesh()
+
+ private void morphFromBaseMesh()
  {    
    pt[] temp = baseG;
    baseG = G;
@@ -184,7 +193,7 @@ class IslandMesh extends Mesh
    updateON();
  }
 
- void morphToBaseMesh()
+ private void morphToBaseMesh()
  {
    if (m_currentT != 0)
    {
@@ -296,22 +305,7 @@ class IslandMesh extends Mesh
    }
    return island;
  }
-    
- private int getIslandForVertex(int vertex)
- {
-   int initCorner = cForV(vertex);
-   int curCorner = initCorner;
-   do
-   {
-     if (island[curCorner] != -1)
-     {
-       return island[curCorner];
-     }
-     curCorner = s(curCorner);
-   }while (curCorner != initCorner);
-   return -1;
- }
-   
+     
  private int getIslandByUnswing(int corner)
  {
    int initCorner = corner;
@@ -590,7 +584,8 @@ class IslandMesh extends Mesh
    {
      print("Creating new base mesh");
      baseMesh = new BaseMesh();
-     baseMesh.declareVectors();  
+     baseMesh.setExpansionManager( m_ringExpanderResult.getIslandExpansionManager() );
+     baseMesh.declareVectors();
 
      m_vertexForIsland = new HashMap< Integer, Integer >();
      m_islandForWaterVert = new HashMap< Integer, Integer >();

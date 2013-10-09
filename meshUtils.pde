@@ -86,22 +86,39 @@ class MeshUserInputHandler
     if (key == '-') { m_mesh.showEdges=!m_mesh.showEdges; if (m_mesh.showEdges) m_mesh.getDrawingState().m_shrunk=1; else m_mesh.getDrawingState().m_shrunk=0; }
 
   }
+  
+  public void interactSelectedMesh()
+  {
+    // -------------------------------------------------------- graphic picking on surface ----------------------------------   
+    if (keyPressed&&key=='h') { m_mesh.pickc(Pick()); }// sets c to closest corner in M 
+    if(pressed) {
+       if (keyPressed&&key=='s') m_mesh.picks(Pick()); // sets M.sc to the closest corner in M from the pick point
+       if (keyPressed&&key=='c') m_mesh.pickc(Pick()); // sets M.cc to the closest corner in M from the pick point
+       if (keyPressed&&(key=='w'||key=='x'||key=='X')) m_mesh.pickcOfClosestVertex(Pick()); 
+    }
+    pressed=false;
+  }
 }
 
 class BaseMeshUserInputHandler extends MeshUserInputHandler
 {
   private BaseMesh m_mesh;
+  private int m_islandForExpansion;
   
   BaseMeshUserInputHandler( BaseMesh m )
   {
     super( m );
     m_mesh = m;
+    m_islandForExpansion = -1;
   }
-  
-  public void onMousePressed()
+   
+  public void interactSelectedMesh()
   {
-     pressed=true;
-     if (keyPressed&&key=='h') {m_mesh.hide(); }  // hide triangle
+    if(pressed) {
+       if (keyPressed&&key=='m') m_mesh.pickc(Pick()); // sets M.sc to the closest corner in M from the pick point
+       m_mesh.onExpandIsland();
+    }
+    super.interactSelectedMesh();
   }
 }
 

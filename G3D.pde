@@ -199,3 +199,16 @@ pt NUBS(float a, pt A, float b, pt B, float c, pt C, float d, pt D, float e, flo
   return J;
   }
 
+//Linear interpolation
+pt morph(pt p1, pt p2, float t)
+{
+   pt result = new pt();
+   result.set(p1);
+   result.mul(1-t);
+   pt temp = new pt();
+   temp.set(p2);
+   temp.mul(t);
+   result.add(temp);
+   return result;
+}
+
