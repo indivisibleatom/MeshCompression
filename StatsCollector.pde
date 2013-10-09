@@ -70,7 +70,7 @@ class StatsCollector
 
       for (int j = 0; j < m_mesh.nt; j++)
       {
-        if (m_mesh.tm[j] == waterColor )
+        if (m_mesh.tm[j] == WATER )
         {
           numWater++;
         }

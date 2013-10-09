@@ -5,19 +5,30 @@ String [] fn= {"HeartReallyReduced.vts","horse.vts","bunny.vts","torus.vts","fla
 int fni=0; int fniMax=fn.length; // file names for loading meshes
 Boolean [] vis = new Boolean [10]; 
 Boolean onTriangles=true, onEdges=true; // projection control
-float shrunk; // >0 for showoing shrunk triangles
 
 class DrawingState
 {
   public boolean m_fShowEdges;
   public boolean m_fShowVertices;
   public boolean m_fShowCorners;
+  public boolean m_fShowNormals;
+  public boolean m_fShowTriangles;
+  public boolean m_fTranslucent;
+  public boolean m_fSilhoutte;
+  public boolean m_fPickingBack;
+  public float m_shrunk;
   
   public DrawingState()
   {
     m_fShowEdges = true;
     m_fShowVertices = false;
     m_fShowCorners = false;
+    m_fShowNormals = false;
+    m_fShowTriangles = true;
+    m_fTranslucent = false;
+    m_fSilhoutte = false;
+    m_fPickingBack = false;
+    m_shrunk = 0;
   }
 };
 
@@ -325,9 +336,24 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
 // ============================================= DISPLAY CORNERS and LABELS =============================
   void showCorners()
   {
+    noStroke();
     for (int i = 0; i < 3*nt; i++)
     {
-      showCorner(i, 3);
+      if (cm[i] == 1)
+      {
+        fill(green);
+        showCorner(i, 5);
+      }
+      else if (cm[i] == 2)
+      {
+        fill(black);
+        showCorner(i, 5);
+      }
+      else
+      {
+      //fill(orange);
+      //showCorner(i, 3);
+      }
     }
   }
 
@@ -347,20 +373,25 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
   void showVertices() {
     noStroke(); noSmooth(); 
     for (int v=0; v<nv; v++)  {
-      if (vm[v]==0) fill(brown,150);
+      //if (vm[v]==0) fill(brown,150);
       if (vm[v]==1) fill(red,150);
-      if (vm[v]==2) fill(green,150);
-      if (vm[v]==3) fill(blue,150);
-      if ( G[v] != null ) //TODO msati3 - HACK
-      {
        show(G[v],r);  
-        if (vm[v]==3)
-        {
-          fill(blue,150);
-          show(G[v],5);  
-        }
+      if (vm[v]==2)
+      {
+        fill(green,150);
+        show(G[v],5);  
       }
+      if (vm[v]==3)
+      {
+        fill(blue,150);
+        show(G[v],5);  
       }
+      if (vm[v]==5)
+      {
+        fill(red,150);
+        show(G[v],5);  
+      }
+    }
     noFill();
     }
     
@@ -370,10 +401,7 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
       for (int v=0; v<nv; v++)
       {
          fill(col);
-         if ( G[v] != null ) //TODO msati3: Hack remove this
-         {
-           show(G[v],radius);  
-         }
+         show(G[v],radius);  
       }
       noFill();
     }
@@ -417,7 +445,7 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
    } 
    
   void showTriangles(Boolean front, int opacity, float shrunk) {
-     for(int t=0; t<nt; t++) {
+     for(int t=0; t<nt; t++) {      
        if(!frontFacing(t)&&showBack) {fill(blue); shade(t); continue;}
        if(!vis[tm[t]] || frontFacing(t)!=front || !visible[t]) continue;
        //if(tm[t]==1) continue; 
@@ -426,13 +454,13 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
        if(tm[t]==1) fill(brown,opacity); 
        if(tm[t]==2) fill(orange,opacity); 
        if(tm[t]==3) fill(cyan,opacity); 
-       if(tm[t]==4) fill(magenta,250); 
+       if(tm[t]==4) fill(magenta,opacity); 
        if(tm[t]==5) fill(green,opacity); 
-       if(tm[t]==6) fill(blue,250); 
-       if(tm[t]==7) fill(#FFCBDB,250); 
-       if(tm[t]==8) fill(blue,220); 
-       if(tm[t]==9) fill(yellow,250); 
-       if(vis[tm[t]]) {if(shrunk!=0) showShrunkT(t,shrunk); else shade(t);}
+       if(tm[t]==6) fill(blue,opacity); 
+       if(tm[t]==7) fill(#FAAFBA,opacity); 
+       if(tm[t]==8) fill(blue,opacity); 
+       if(tm[t]==9) fill(yellow,opacity); 
+       if(vis[tm[t]]) {if(m_drawingState.m_shrunk != 0) showShrunkT(t, m_drawingState.m_shrunk); else shade(t);}
        }
      }
   
@@ -445,13 +473,37 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
   {
     if(m_drawingState.m_fShowEdges)
     {
-      stroke(dblue); 
+      stroke(orange); 
     } 
     else
     { 
       noStroke();
-    } 
-    showTriangles(true,255,shrunk);
+    }
+    if(m_drawingState.m_fPickingBack)
+    {
+        noStroke(); 
+        if(m_drawingState.m_fTranslucent)  
+        {
+          showTriangles(false,100,m_drawingState.m_shrunk); 
+        }
+        else 
+        {
+          showBackTriangles();
+        }
+    }
+    else if(m_drawingState.m_fTranslucent)
+    {
+      if (m_drawingState.m_fShowTriangles)
+      {
+        fill(grey,80); noStroke(); 
+        showBackTriangles();  
+        showTriangles(true,150,m_drawingState.m_shrunk);
+      } 
+    }
+    else if (m_drawingState.m_fShowTriangles)
+    {
+      showTriangles(true,255,m_drawingState.m_shrunk);
+    }
     if(m_drawingState.m_fShowVertices)
     {
       showVertices();
@@ -460,10 +512,32 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
     {
       showCorners();
     }
-    if (baseMesh != null)
+    if(m_drawingState.m_fShowNormals)
     {
-      baseMesh.showVertices(green, 4);
+      showNormals();
     }
+    if(m_drawingState.m_fShowEdges)
+    {
+     stroke(red); showBorder();  // show border edges
+    }
+  }
+  
+  void drawPostPicking()
+  {       
+     // -------------------------------------------------------- display picked points and triangles ----------------------------------   
+    fill(cyan); showSOT(); // shoes triangle t(cc) shrunken
+    showcc();  // display corner markers: seed sc (green),  current cc (red)
+    
+    // -------------------------------------------------------- display FRONT if we were picking on the back ---------------------------------- 
+    if(getDrawingState().m_fPickingBack) 
+    {
+      if(getDrawingState().m_fTranslucent) {fill(cyan,150); if(getDrawingState().m_fShowEdges) stroke(orange); else noStroke(); showTriangles(true,100,m_drawingState.m_shrunk);} 
+      else {fill(cyan); if(getDrawingState().m_fShowEdges) stroke(orange); else noStroke(); showTriangles(true,255,m_drawingState.m_shrunk);}
+    }
+       
+    // -------------------------------------------------------- Disable z-buffer to display occluded silhouettes and other things ---------------------------------- 
+    hint(DISABLE_DEPTH_TEST);  // show on top
+    if(getDrawingState().m_fSilhoutte) {stroke(dbrown); drawSilhouettes(); }  // display silhouettes
   }
   
   DrawingState getDrawingState()
@@ -828,9 +902,6 @@ void loadMeshOBJ(String fn) {
     }
   for (int i=0; i<nv; i++) G[i].mul(4);  
   }; 
-
-
-
 
 // ============================================================= CUT =======================================================
   void cut(pt[] CP, int ncp) {

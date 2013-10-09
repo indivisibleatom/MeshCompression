@@ -10,12 +10,29 @@ class MeshInteractor
     m_selectedMesh = -1;
   } 
   
-  void addMesh(Mesh m)
+  int addMesh(Mesh m)
   {
     m_meshes.add(m);
     if ( m_selectedMesh == -1 )
     {
       m_selectedMesh = 0;
+    }
+    return m_meshes.size();
+  }
+  
+  void removeMesh(Mesh m)
+  {
+    boolean fRemoved = m_meshes.remove(m);
+    if ( !fRemoved )
+    {
+      if (DEBUG && DEBUG_MODE >= LOW)
+      {
+        print("MeshInteractor::removeMesh - can't find mesh to be unregistered!");
+      }
+    }
+    else if (m_meshes.size() == 0)
+    {
+      m_selectedMesh = -1;
     }
   }
 
@@ -56,4 +73,12 @@ class MeshInteractor
     }
     return m_meshes.get(m_selectedMesh);
   } 
+  
+  void drawRegisteredMeshes()
+  {
+    for (int i = 0; i < m_meshes.size(); i++)
+    {
+      m_meshes.get(i).draw();
+    }
+  }
 }

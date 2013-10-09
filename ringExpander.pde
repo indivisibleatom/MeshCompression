@@ -8,12 +8,12 @@ class State
     m_corner = corner;
     m_parentTriangle = parent;
   }
-  
+
   public int corner()
   {
     return m_corner;
   }
-  
+
   public int parentTriangle()
   {
     return m_parentTriangle;
@@ -34,7 +34,7 @@ class RingExpander
   boolean[] m_triangleVisited;
 
   Stack< State > m_recursionStack;
-  
+
   public RingExpander(IslandMesh m, int seed)
   {
     m_mesh = m;
@@ -43,6 +43,7 @@ class RingExpander
 
     if (seed != -1)
     {
+      seed = 679;
       print("Seed for ringExpander " + seed);
       m_seed = seed;
     }
@@ -91,7 +92,7 @@ class RingExpander
     {
       return true;
     }
-    return false; 
+    return false;
   }
 
   public void completeRingExpander()
@@ -109,15 +110,16 @@ class RingExpander
     {
       if (!vertexVisited[m.v(seed)])
       {
-         vertexVisited[m.v(seed)] = true;
-         triangleVisited[m.t(seed)] = true;
+        vertexVisited[m.v(seed)] = true;
+        triangleVisited[m.t(seed)] = true;
       }
       else if (!triangleVisited[m.t(seed)]) 
       {
         seed = m.o(seed);
       }
       seed = m.r(seed);
-    }while (seed != m.o(init));
+    }
+    while (seed != m.o (init));
     colorTriangles(vertexVisited, triangleVisited);
 
     m_numTrianglesToVisit = -1;
@@ -125,7 +127,7 @@ class RingExpander
 
   public void visitRecursively()
   {
-    while (((m_numTrianglesToVisit == -1) || (m_numTrianglesVisited < m_numTrianglesToVisit)) &&(!m_recursionStack.empty()))
+    while ( ( (m_numTrianglesToVisit == -1) || (m_numTrianglesVisited < m_numTrianglesToVisit)) &&(!m_recursionStack.empty()))
     {
       State currentState = m_recursionStack.pop();
       int corner = currentState.corner();

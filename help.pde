@@ -26,3 +26,7 @@ void scribeAt(String S, int x, int y) {text(S,x,y);} // writes on screen pixels 
 void scribe(String S, float x, float y) {text(S,x,y);} // writes at (x,y)
 void scribe(String S, float x, float y, color c) {fill(c); text(S,x,y); noFill();}
 
+int pictureCounter=0;
+void snapPicture() {saveFrame("PICTURES/P"+nf(pictureCounter++,3)+".jpg");}
+
+

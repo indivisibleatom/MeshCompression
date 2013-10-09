@@ -1,7 +1,5 @@
 int ISLAND_SIZE = 5;
 int MAX_ISLANDS = 40000;
-int waterColor = 8;
-int landColor = 9;
 
 int numIslands = 0;
 StepWiseRingExpander g_stepWiseRingExpander = new StepWiseRingExpander();
@@ -208,7 +206,7 @@ class RingExpanderResult
 
   private void setColor(int corner)
   {
-    m_mesh.tm[m_mesh.t(corner)] = landColor;
+    m_mesh.tm[m_mesh.t(corner)] = ISLAND;
   }
 
   private boolean isValidChild(int childCorner, int parentCorner)
@@ -244,7 +242,6 @@ class RingExpanderResult
       VisitState currentState = m_visitStack.pop();
       int corner = currentState.corner();
       m_numTrianglesColored++;
-      m_mesh.cm[corner] = 1;
       setColor(corner);
 
       if (isValidChild(m_mesh.l(corner), corner))
@@ -267,7 +264,7 @@ class RingExpanderResult
 
     for (int i = 0; i < m_mesh.nt; i++)
     {
-      m_mesh.tm[i] = waterColor;
+      m_mesh.tm[i] = WATER;
     }
 
     m_numTrianglesColored = 0;
@@ -339,7 +336,7 @@ class RingExpanderResult
   private void markSubmerged(int tri)
   {
     markUnVisited(tri);    
-    m_mesh.tm[tri] = waterColor;
+    m_mesh.tm[tri] = WATER;
   }
 
   private boolean hasVertices(int tri, int[] shoreVerts)
@@ -421,12 +418,12 @@ class RingExpanderResult
     while (!succStack.empty())
     {
       corner = succStack.pop().corner();
-      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
       {
         succStack.push(new VisitState(m_mesh.r(corner)));
         numSuc++;
       }
-      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
       {
         succStack.push(new VisitState(m_mesh.l(corner)));
         numSuc++;
@@ -438,11 +435,11 @@ class RingExpanderResult
   private int getNumChild(int corner)
   {
     int numChild = 0;
-    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
     {
       numChild++;
     }
-    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
     {
       numChild++;
     }
@@ -461,11 +458,11 @@ class RingExpanderResult
 
   private int getChild(int corner)
   {
-    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
     {
       return m_mesh.l(corner);
     }
-    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
     {
       return m_mesh.r(corner);
     } 
@@ -474,10 +471,11 @@ class RingExpanderResult
 
   private void markVisited(int triangle, int islandNumber)
   {
-    m_mesh.triangleIsland[triangle] =  
+    m_mesh.triangleIsland[triangle] =  islandNumber;
     m_mesh.island[m_mesh.c(triangle)] = islandNumber;
     m_mesh.island[m_mesh.n(m_mesh.c(triangle))] = islandNumber;
     m_mesh.island[m_mesh.p(m_mesh.c(triangle))] = islandNumber;
+    markCorner(m_mesh.c(triangle), islandNumber); markCorner(m_mesh.n(m_mesh.c(triangle)), islandNumber); markCorner(m_mesh.p(m_mesh.c(triangle)), islandNumber);
   }
   
   private void markUnVisited(int triangle)
@@ -486,6 +484,17 @@ class RingExpanderResult
     m_mesh.island[m_mesh.c(triangle)] = -1;
     m_mesh.island[m_mesh.n(m_mesh.c(triangle))] = -1;
     m_mesh.island[m_mesh.p(m_mesh.c(triangle))] = -1;
+    unmarkCorner(m_mesh.c(triangle)); unmarkCorner(m_mesh.n(m_mesh.c(triangle))); unmarkCorner(m_mesh.p(m_mesh.c(triangle)));
+  }
+  
+  private void markCorner( int corner, int islandNumber )
+  {
+    m_mesh.cm[corner] = 100+islandNumber;
+  }
+  
+  private void unmarkCorner( int corner )
+  {
+    m_mesh.cm[corner] = 0;
   }
 
   //Perform an actual submerge from a corner, the number of triangles to submerge and the bitString -- the path to follow for the submersion
@@ -530,7 +539,6 @@ class RingExpanderResult
           {
             countTwo++;
             int popped = -1;
-            //TODO msati3: Fix empty stack bug for seed 166
             popped = bitString.pop();
             cur.setNumChild(2);
             cur.setFirstState(false);
@@ -807,11 +815,11 @@ class RingExpanderResult
     while (!submergeStack.empty())
     {
       corner = submergeStack.pop();
-      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
       {
         submergeStack.push(m_mesh.r(corner));
       }
-      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
       {
         submergeStack.push(m_mesh.l(corner));
       }
@@ -836,11 +844,11 @@ class RingExpanderResult
       }
       else
       {
-        if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+        if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
         {
           submergeStack.push(m_mesh.r(corner));
         }
-        if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+        if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
         {
           submergeStack.push(m_mesh.l(corner));
         }
@@ -918,6 +926,12 @@ class RingExpanderResult
             {
               if (hasVertices(m_mesh.t(corner), shoreVertsR) || hasVertices(m_mesh.t(corner), shoreVertsL))
               {
+                if (hasVertices(m_mesh.t(corner), shoreVertsR) && hasVertices(m_mesh.t(corner), shoreVertsL))
+                {
+                  numIslands--;
+                  renumberIslands(m_mesh.island[m_mesh.l(corner)]);
+                  submergeOther(m_mesh.l(corner), shoreVertsR);
+                }
                 mergeShoreVertices(m_mesh.t(corner), shoreVertsR, shoreVertsL, curShoreVerts);
                 markSubmerged(m_mesh.t(corner));
                 cur.setResult(-1);
@@ -984,7 +998,6 @@ class RingExpanderResult
               }
               else if (numL > numTrianglesToSubmerge || numR > numTrianglesToSubmerge)
               {
-                print("Here");
                 //Select to submerge the side that leads to lesser submersions
                 if (numL < numR)
                 {
@@ -1082,23 +1095,19 @@ class RingExpanderResult
     while (!markStack.empty())
     {
       corner = markStack.pop();
-      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
       {
         markStack.push(m_mesh.r(corner));
       }
-      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
       {
         markStack.push(m_mesh.l(corner));
       }
       markVisited(m_mesh.t(corner), islandNumber);
       count++;
     }
-    if (islandNumber == 6)
-    {
-      print("Count " + count);
-    }
   }
-
+  
   private int getLength(int corner)
   {
     int rightLen = 0;
@@ -1158,6 +1167,25 @@ class RingExpanderResult
     return false;
   }
   
+  private void renumberIslands(int islandNumber)
+  {
+    if (islandNumber == -1)
+    {
+      if ( DEBUG && DEBUG_MODE >= LOW )
+      {
+        print("RingExpanderResult::renumberIsland - supplying -1 as islandNumber. Bug!");
+      }
+      return;
+    }
+    for (int i = 0; i < m_mesh.nt; i++)
+    {
+      if ( m_mesh.island[3*i] > islandNumber )
+      {
+        markVisited(i, m_mesh.island[3*i]-1);
+      }
+    }
+  }
+  
   public void formIslands(int cornerToStart)
   {
     //init
@@ -1210,10 +1238,10 @@ class RingExpanderResult
     {
       if (length < ISLAND_SIZE && length != -1)
       {
-        numIslands--;
         submergeAll(cornerToStart);
         g_submersionCounter.incBadSubmersion();
       }
+       numIslands--;
     }
 
     print("\nThe selected corner for starting is " + m_mesh.cc);
