@@ -152,7 +152,7 @@ class Mesh {
  int addVertex(pt P) { G[nv] = new pt(); G[nv].set(P); nv++; return nv-1;};
  int addVertex(float x, float y, float z) { G[nv] = new pt(); G[nv].x=x; G[nv].y=y; G[nv].z=z; nv++; return nv-1;};
   
- void addTriangle(int i, int j, int k) {V[nc++]=i; V[nc++]=j; V[nc++]=k; visible[nt++]=true;} // adds a triangle
+ void addTriangle(int i, int j, int k) {V[nc++]=i; V[nc++]=j; V[nc++]=k; visible[nt++]=true; /*print("Triangle added " + nt + " " + i + " " + j + " " + k + "\n");*/} // adds a triangle
  void addTriangle(int i, int j, int k, int m) {V[nc++]=i; V[nc++]=j; V[nc++]=k; tm[nt]=m; visible[nt++]=true; } // adds a triangle
 
  void updateON() {computeO(); normals(); } // recomputes O and normals
@@ -220,7 +220,11 @@ class Mesh {
 // ============================================= MESH MANIPULATION =======================================
   // pick corner closest to point X
   void pickcOfClosestVertex (pt X) {for (int b=0; b<nc; b++) if(vis[tm[t(b)]]) if(d(X,g(b))<d(X,g(cc))) {cc=b; pc=b; } } // picks corner of closest vertex to X
-  void pickc (pt X) {for (int b=0; b<nc; b++) if(vis[tm[t(b)]]) if(d(X,cg(b))<d(X,cg(cc))) {cc=b; pc=b; } } // picks closest corner to X
+  void pickc (pt X) {
+    int origCC = cc;
+    for (int b=0; b<nc; b++) if(vis[tm[t(b)]] && visible[t(b)]) if(d(X,cg(b))<d(X,cg(cc))) {cc=b; pc=b; }
+    if ( origCC != cc && DEBUG && DEBUG_MODE >= LOW ) { print("Corner picked :" + cc + " vertex :" + v(cc) + " corner for vertex :" + CForV[v(cc)]); }
+  } // picks closest corner to X
   void picksOfClosestVertex (pt X) {for (int b=0; b<nc; b++) if(vis[tm[t(b)]]) if(d(X,g(b))<d(X,g(sc))) {sc=b;} } // picks corner of closest vertex to X
   void picks (pt X) {for (int b=0; b<nc; b++)  if(vis[tm[t(b)]]) if(d(X,cg(b))<d(X,cg(sc))) {sc=b;} } // picks closest corner to X
 
@@ -303,15 +307,19 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
     for (int i=0; i<3*nt; i++) {O[i]=i;};  // init O table to -1: has no opposite (i.e. is a border corner)
     for (int i=0; i<nc; i++) {  for (int j=i+1; j<nc; j++) {       // for each corner i, for each other corner j
         if( (v(n(i))==v(p(j))) && (v(p(i))==v(n(j))) ) {O[i]=j; O[j]=i;};};};}// make i and j opposite if they match         
+  
+  void computeCForV() {
+    for (int i = 0; i < nv; i++){ CForV[i] = -1; }
+    print("Here" + nc); 
+    for (int i = 0; i < nc; i++){ if (CForV[v(i)] == -1) { CForV[v(i)] = i; } }
+  }
 
   void computeO() {
- //   resetMarkers(); 
+    computeCForV();
     int val[] = new int [nv]; for (int v=0; v<nv; v++) val[v]=0;  for (int c=0; c<nc; c++) val[v(c)]++;   //  valences
     int fic[] = new int [nv]; int rfic=0; for (int v=0; v<nv; v++) {fic[v]=rfic; rfic+=val[v];};  // head of list of incident corners
     for (int v=0; v<nv; v++) val[v]=0;   // valences wil be reused to track how many incident corners were encountered for each vertex
     int [] C = new int [nc]; for (int c=0; c<nc; c++) C[fic[v(c)]+val[v(c)]++]=c;  // vor each vertex: the list of val[v] incident corners starts at C[fic[v]]
-    for (int i = 0; i < nv; i++){ CForV[i] = -1; }
-    for (int i = 0; i < nc; i++){ if (CForV[v(i)] == -1) { CForV[v(i)] = i; } }
     for (int c=0; c<nc; c++) O[c]=c;    // init O table to -1 meaning that a corner has no opposite (i.e. faces a border)
     for (int v=0; v<nv; v++)             // for each vertex...
        for (int a=fic[v]; a<fic[v]+val[v]-1; a++) for (int b=a+1; b<fic[v]+val[v]; b++)  { // for each pair (C[a],C[b[]) of its incident corners
@@ -446,8 +454,8 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
    
   void showTriangles(Boolean front, int opacity, float shrunk) {
      for(int t=0; t<nt; t++) {      
-       if(!frontFacing(t)&&showBack) {fill(blue); shade(t); continue;}
        if(!vis[tm[t]] || frontFacing(t)!=front || !visible[t]) continue;
+       if(!frontFacing(t)&&showBack) {fill(blue); shade(t); continue;}
        //if(tm[t]==1) continue; 
        //if(tm[t]==1&&!showMiddle || tm[t]==0&&!showLeft || tm[t]==2&&!showRight) continue; 
        if(tm[t]==0) fill(red,opacity); 
@@ -465,7 +473,6 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
      }
   
   void showBackTriangles() {for(int t=0; t<nt; t++) if(!frontFacing(t)) shade(t);};  
-  void showAllTriangles() {for(int t=0; t<nt; t++) if(showEdges) showShrunkT(t,1); else shade(t);};  
   void showMarkedTriangles() {for(int t=0; t<nt; t++) if(visible[t]&&Mt[t]!=0) {fill(ramp(Mt[t],rings)); showShrunkOffsetT(t,1,1); }};  
   
   // ********************************************************* DRAW *****************************************************

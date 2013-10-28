@@ -193,7 +193,6 @@ class RingExpanderResult
   private int m_numTrianglesToColor;
   private int m_numTrianglesColored;
   private Stack<VisitState> m_visitStack;
-  private IslandExpansionManager m_expansionManager;
 
   IslandMesh m_mesh;
 
@@ -203,7 +202,6 @@ class RingExpanderResult
     m_parentTArray = parentTrianglesArray;
     m_mesh = m;
     m_numTrianglesToColor = -1;
-    m_expansionManager = new IslandExpansionManager();
   }
 
   private void setColor(int corner)
@@ -333,6 +331,7 @@ class RingExpanderResult
     {
       shoreVerts[index++] = -1;
     }
+    print("Merged shoreVertices " + shoreVerts[0] + " " + shoreVerts[1]);
   }
 
   private void markSubmerged(int tri)
@@ -829,10 +828,11 @@ class RingExpanderResult
     }
   }
   
-  private void submergeOther(int corner, int[] shoreVerts)
+  private void submergeOther(int corner, int[] shoreVerts, boolean fCompleteSubmerge)
   {
     Stack<Integer> submergeStack = new Stack<Integer>();
     submergeStack.push(corner);
+    boolean fBeachheadReached = false;
     
     while (!submergeStack.empty())
     {
@@ -841,20 +841,61 @@ class RingExpanderResult
       {
         if (getNumSuccessors(corner) < ISLAND_SIZE)
         {
+          if ( fCompleteSubmerge )
+          {
+            numIslands--;
+            if ( DEBUG && DEBUG_MODE >= LOW )
+            {
+              print("Special config: calling renumber with " + numIslands + m_mesh.island[corner] + "at corner " + corner + "\n");
+            }
+            renumberIslands(m_mesh.island[corner]);
+          }
           submergeAll(corner);
         }
       }
       else
       {
-        if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
+        if ( fCompleteSubmerge && !fBeachheadReached )
         {
-          submergeStack.push(m_mesh.r(corner));
+          if (isValidChild(m_mesh.r(corner), corner) && isValidChild(m_mesh.l(corner), corner))
+          {
+            if (DEBUG && DEBUG_MODE >= LOW)
+            {
+              print("RingExpanderResult::submergeOther - incorrect assumptions about fCompleteSubmerges. Such a topology can arise");
+            }
+          }
+          else
+          {
+            if (isValidChild(m_mesh.r(corner), corner))
+            {
+              if (m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
+              {
+                fBeachheadReached = true;
+              }
+              submergeStack.push(m_mesh.r(corner));
+            }
+            if (isValidChild(m_mesh.l(corner), corner))
+            {
+              if (m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
+              {
+                fBeachheadReached = true;
+              }
+              submergeStack.push(m_mesh.l(corner));
+            }
+          }
         }
-        if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
+        else
         {
-          submergeStack.push(m_mesh.l(corner));
+          if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
+          {
+            submergeStack.push(m_mesh.r(corner));
+          }
+          if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
+          {
+            submergeStack.push(m_mesh.l(corner));
+          }
+          markSubmerged(m_mesh.t(corner));
         }
-        markSubmerged(m_mesh.t(corner));
       }
     }
   }
@@ -928,11 +969,15 @@ class RingExpanderResult
             {
               if (hasVertices(m_mesh.t(corner), shoreVertsR) || hasVertices(m_mesh.t(corner), shoreVertsL))
               {
+                print("Here " + m_mesh.v(corner) + " " + shoreVertsR[0] + " " + shoreVertsR[1] + " " + shoreVertsL[0] + " " + shoreVertsL[1] );
+                m_mesh.cc = corner;
                 if (hasVertices(m_mesh.t(corner), shoreVertsR) && hasVertices(m_mesh.t(corner), shoreVertsL))
                 {
-                  numIslands--;
-                  renumberIslands(m_mesh.island[m_mesh.l(corner)]);
-                  submergeOther(m_mesh.l(corner), shoreVertsR);
+                  //This may be the case, when we have just formed an island one the left and right subtrees and are checking for triangles to submerge e
+                  //This may be the case when we are propagating our submersion vertices, after having formed an island, to come to an isolated vertex. In that case
+                  //we decrease the number of islands and submerge one of the islands
+                  print("Doing a complete" + m_mesh.l(corner));
+                  submergeOther(m_mesh.l(corner), shoreVertsR, true/*fCompleteSubmerge*/);
                 }
                 mergeShoreVertices(m_mesh.t(corner), shoreVertsR, shoreVertsL, curShoreVerts);
                 markSubmerged(m_mesh.t(corner));
@@ -949,7 +994,7 @@ class RingExpanderResult
               int other = rNeg? m_mesh.l(corner) : m_mesh.r(corner);
               if (hasVertices(m_mesh.t(corner), shoreVertsNeg))
               {
-                submergeOther(other, shoreVertsNeg);
+                submergeOther(other, shoreVertsNeg, false/*fCompleteSubmerge*/);
                 mergeShoreVertices(m_mesh.t(corner), shoreVertsR, shoreVertsL, curShoreVerts);
                 markSubmerged(m_mesh.t(corner));
                 cur.setResult(-1);
@@ -1090,14 +1135,10 @@ class RingExpanderResult
   
   private void numberIslands(int corner, int islandNumber)
   {
-    IslandExpansionStream currentStream = m_expansionManager.addIslandStream();
     Stack<Integer> markStack = new Stack<Integer>();
     markStack.push(corner);
     int count = 0;
     char ch1, ch2, ch = 0;
-
-    currentStream.addG( count++, m_mesh.g(m_mesh.p(corner)), ch );
-    currentStream.addG( count++, m_mesh.g(m_mesh.n(corner)), ch );
 
     while (!markStack.empty())
     {
@@ -1106,32 +1147,18 @@ class RingExpanderResult
       if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
       {
         markStack.push(m_mesh.r(corner));
-        ch1 = 'r';
       }
       if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
       {
         markStack.push(m_mesh.l(corner));
-        ch2 = 'l';
       }
 
-      //Populate appropriate triangle character
-      if (ch1 == 'l' && ch2 == 'r')
-      {
-        ch = 's';
-      }
-      else
-      {
-        ch = (ch1 == 0) ? ch2 : ch1;
-      }
-
-      currentStream.addG( count++, m_mesh.g(corner), ch );
       markVisited(m_mesh.t(corner), islandNumber);
     }
   }
   
   private void renumberIslands(int islandNumber)
   {
-     m_expansionManager.removeIslandStream( islandNumber );
     if (islandNumber == -1)
     {
       if ( DEBUG && DEBUG_MODE >= LOW )
@@ -1275,11 +1302,6 @@ class RingExpanderResult
   public int seed()
   {
     return m_seed;
-  }
-  
-  public IslandExpansionManager getIslandExpansionManager()
-  {
-    return m_expansionManager;
   }
 }
 

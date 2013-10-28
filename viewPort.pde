@@ -113,7 +113,7 @@ class Viewport
 
     //archival
     if(key=='K') {M.saveMeshVTS();}
-    if(key=='L') {Mesh m = new Mesh();
+    if(key=='l') {Mesh m = new Mesh();
                  m.loadMeshOBJ(); // M.loadMesh(); 
                  m.updateON();   m.resetMarkers();
                  m.computeBox();

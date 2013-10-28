@@ -83,29 +83,31 @@ class CuboidConstructor
       m_mesh.addTriangle( initialOffsetRow + initialOffsetBack + j, initialOffsetRow + j, initialOffsetRow + initialOffsetBack + j + 1 );
       m_mesh.addTriangle( initialOffsetRow + j + 1, initialOffsetRow + initialOffsetBack + j + 1, initialOffsetRow + j );
     }
-       
+
     m_mesh.resetMarkers(); // resets vertex and tirangle markers
     m_mesh.updateON();
-    
+
     //Flip around some edges
-    
-    /*for (int i = 1; i < m_numRows-2; i++)
+    for (int i = 1; i < m_numRows-2; i++)
     {
       for (int j = 1; j < m_numCols-2; j++)
       {
         int triangle1 = 2 * i * (m_numCols - 1) + 2 * j;
         int triangle2 = 2 * (m_numRows - 1) * (m_numCols - 1) + triangle1 + 1; 
-        if ( random(5) <= 3 )
+        if ( (i+j)%5 <= 3 )
         {
           m_mesh.flip(triangle1*3);
         }
-        if ( random(5) <= 3 )
+        if ( (i*j)%5 <= 3 )
         {
           m_mesh.flip(triangle2*3);
         }
       }
-    }*/
-
+    }
+       
+    m_mesh.resetMarkers(); // resets vertex and tirangle markers
+    m_mesh.updateON();
+    
     m_mesh.computeBox();
   }
   

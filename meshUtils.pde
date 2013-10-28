@@ -58,7 +58,7 @@ class MeshUserInputHandler
     if(key=='O') m_mesh.back();
     if(key=='L') m_mesh.left();
     if(key=='R') m_mesh.right();   
-    if(key=='S') m_mesh.swing();
+    if(key=='S') {m_mesh.cc = m_mesh.s(m_mesh.cc); print("Current corner " + m_mesh.cc);}
     if(key=='U') m_mesh.unswing();
     
     // mesh edits, smoothing, refinement
@@ -115,9 +115,26 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
   public void interactSelectedMesh()
   {
     if(pressed) {
-       if (keyPressed&&key=='m') m_mesh.pickc(Pick()); // sets M.sc to the closest corner in M from the pick point
-       m_mesh.onExpandIsland();
+       if (keyPressed&&key=='m')
+       {
+         m_mesh.pickc(Pick()); // sets M.sc to the closest corner in M from the pick point
+         m_mesh.onExpandIsland();
+       }
     }
+    
+    //Debug
+    if(pressed) {
+       if (keyPressed&&key=='y')
+       { 
+         m_mesh.pickc(Pick()); // sets M.sc to the closest corner in M from the pick point
+         print("Here");
+         m_mesh.beforeStepWiseExpand();
+       }
+    }
+    if(key == 't') {
+      m_mesh.onStepWiseExpand();
+    }
+    
     super.interactSelectedMesh();
   }
 }
@@ -145,7 +162,9 @@ class IslandMeshUserInputHandler extends MeshUserInputHandler
     {
       if (m_fSelectIsland && (key - '0' >= 0) && (key - '0' < 10))
       {
-        m_mesh.selectIsland(key-'0');
+        print("Here");
+        m_mesh.selectIsland(53);
+//        m_mesh.selectIsland(key-'0');
       }
       else
       {

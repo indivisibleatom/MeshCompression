@@ -38,6 +38,16 @@ void setup() {
 // ******************************************************************************************************************* DRAW      
 void draw() {  
   background(white);
+  /*camera();
+  gl.glColor3i(255,0,0);
+  gl.glBegin(TRIANGLE);
+    gl.glColor3i(255,0,0);
+    gl.glVertex3d(0,0,-10);
+      gl.glColor3i(255,0,0);
+    gl.glVertex3d(100,0,-10);
+      gl.glColor3i(255,0,0);
+    gl.glVertex3d(50,100,-10);
+  gl.glEnd();*/
   g_controller.viewportManager().draw();
  } // end draw
  

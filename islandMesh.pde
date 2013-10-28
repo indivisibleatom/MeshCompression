@@ -26,9 +26,11 @@ class IslandMesh extends Mesh
 
  Map<Integer, Integer> m_vertexForIsland; //A representative vertex of main mesh in a particular island
  Map<Integer, Integer> m_islandForWaterVert; //Mapping of water vertices to island numbers in base mesh
+ Map<Integer, Integer> m_islandVertexNumber; //For a global vertex index, return the vertex number in the island (starting from 0 to num of vertices in the island)
 
  //TODO msati3: clean this up...where does this go? Do wholistically
  RingExpanderResult m_ringExpanderResult = null;
+ IslandExpansionManager m_islandExpansionManager = null;
  BaseMesh baseMesh = null;
  
  //Debugging functionality
@@ -39,7 +41,15 @@ class IslandMesh extends Mesh
  IslandMesh()
  {
    m_userInputHandler = new IslandMeshUserInputHandler(this);
+   m_islandExpansionManager = new IslandExpansionManager();
  }
+
+ //Debug
+ void pickc (pt X) {
+   int origCC = cc;
+    super.pickc(X);
+    if ( origCC != cc && DEBUG && DEBUG_MODE >= LOW ) { print(" Island for corner " + cc + " is " + getIslandForVertexExtended(v(cc)) + " " + island[cc] + " Number of vertex wrt island is" + m_islandVertexNumber.get(v(cc)) + "\n" ); }
+ } // picks closest corner to X
 
  void resetMarkers() 
  {
@@ -67,7 +77,7 @@ class IslandMesh extends Mesh
      m_ringExpanderResult.colorRingExpander();
    }
  }
-   
+
  void formIslands(int initCorner)
  {
    m_fDrawIsles = true;
@@ -77,7 +87,7 @@ class IslandMesh extends Mesh
      m_ringExpanderResult.formIslands(initCorner);
    }
  }
- 
+
  //Adds morphing to base mesh, aside from normal functionality of a mesh
  void draw()
  {
@@ -96,13 +106,14 @@ class IslandMesh extends Mesh
    drawIsland();
 
  }
- 
+
  private void drawIsland()
  {
    for (int i = 0; i < nt; i++)
    {
      if (m_selectedIsland != -1 && island[3*i] == m_selectedIsland)
      {
+       print("Here");
        vm[m_vertexForIsland.get(m_selectedIsland)] = 5;
        fill(red);
        shade(i);
@@ -141,6 +152,20 @@ class IslandMesh extends Mesh
    return -1;
  }
 
+ //Returns island number ( = vertex id in base mesh ). Also assigns numbers to water vertices
+ private int getIslandForVertexExtended(int vertex)
+ {
+   if ( m_fDrawIsles == true )
+   {
+     int island = getIslandForVertex(vertex);
+     if ( island == -1 )
+     {
+       return m_islandForWaterVert.get( vertex );
+     }
+     return island;
+   }
+   return -1;
+ }
 
  private void morphFromBaseMesh()
  {    
@@ -278,34 +303,29 @@ class IslandMesh extends Mesh
    return isVertexForCornerWaterVertex(cornerForVertex);
  }
 
- //Gives a vertex, returns any one corner incident on the vertex and incident on an island
- //TODO msati3: There can be multiple such corners. Which one to return?
- private int getIslandCornerForVertex(int vertex)
+ //Gives a beach edge, returns any one corner of the first vertex. Returns -1 is not a beach edge
+ private int getIslandCornerForVertex(int vertex, int otherVertex)
  {
+   if ( DEBUG && DEBUG_MODE >= VERBOSE )
+   {
+     print("Getting island corner for first vertex for edge vertex1: " + vertex + " vertex2: " + otherVertex);
+   }
    int initCorner = cForV(vertex);
    int curCorner = initCorner;
    do
    {
      if (island[curCorner] != -1)
      {
-       return curCorner;
+       if ( (vertex == otherVertex) || (v(n(curCorner)) == otherVertex) || (v(p(curCorner)) == otherVertex) )
+       {
+         return curCorner;
+       }
      }
      curCorner = s(curCorner);
    }while (curCorner != initCorner);
    return -1;
  }
 
- //Returns island number ( = vertex id in base mesh ). Also assigns numbers to water vertices
- private int getIslandForVertexExtended(int vertex)
- {
-   int island = getIslandForVertex(vertex);
-   if ( island == -1 )
-   {
-     return m_islandForWaterVert.get( vertex );
-   }
-   return island;
- }
-     
  private int getIslandByUnswing(int corner)
  {
    int initCorner = corner;
@@ -584,14 +604,15 @@ class IslandMesh extends Mesh
    {
      print("Creating new base mesh");
      baseMesh = new BaseMesh();
-     baseMesh.setExpansionManager( m_ringExpanderResult.getIslandExpansionManager() );
+     baseMesh.setExpansionManager( m_islandExpansionManager );
      baseMesh.declareVectors();
 
      m_vertexForIsland = new HashMap< Integer, Integer >();
      m_islandForWaterVert = new HashMap< Integer, Integer >();
+     m_islandVertexNumber = new HashMap<Integer, Integer>();
      int numWaterVerts = getNumWaterVerts();
      int countWater = 0;
-     pt[] baseMeshG = new pt[numIslands + numWaterVerts];
+     pt[] baseMeshG = new pt[numIslands + numWaterVerts + 1000];
      for (int i = 0; i < baseMeshG.length; i++)
      {
        baseMeshG[i] = null;
@@ -610,13 +631,18 @@ class IslandMesh extends Mesh
        }
        else
        {
+         print("Adding water vertex " + (numIslands + countWater) );
+         if (numIslands + countWater == 60)
+         {
+           vm[i] = 5;
+         }
          m_vertexForIsland.put( numIslands + countWater, i );
          m_islandForWaterVert.put( i, numIslands + countWater );
          baseMeshG[ numIslands + countWater ] = G[i]; 
          countWater++;
        }
      }
-     baseMesh.nv = baseMesh.G.length;
+     baseMesh.nv = numIslands + numWaterVerts;
      if ( DEBUG && DEBUG_MODE >= VERBOSE )
      {
        print ("Base mesh created with number of vertices " + (numIslands + numWaterVerts));
@@ -637,9 +663,13 @@ class IslandMesh extends Mesh
    void connectMeshStepByStep()
    {
      m_currentAdvances = 0;
-     for (int i = 0; i < baseMesh.G.length; i++)
+     for (int i = 0; i < baseMesh.nv; i++)
      {
        int v = m_vertexForIsland.get(i);
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
+       {
+         print("Current island is " + i);
+       }
        if ( isIslandVertex( v ) && connectInBaseMesh(v) )
        {
          int currentVOnIsland = v;
@@ -654,6 +684,10 @@ class IslandMesh extends Mesh
          do
          {
            int incidentCorner = incidentTriangleType( currentVOnIsland, prevVOnIsland, JUNCTION, ISOLATEDWATER, cornerList );
+           if ( DEBUG && DEBUG_MODE >= VERBOSE )
+           {
+             print("Starting from currentVertex " + returnedVertex + " prevVertex " + prevVOnIsland + "bTrackedC2 " + bTrackedC2 + "incidentCorner " + incidentCorner);
+           }
 
            if ( incidentCorner != -1 )
            {
@@ -668,24 +702,77 @@ class IslandMesh extends Mesh
 
                int bv2 = island2;
                int bv3 = island3;
+               int triangle = -1, bCornerForVertex = -1;
+               
+               boolean triangleAdded = false;
 
                if ( bv2 != -1 && bv3 != -1 )
                {
-                 baseMesh.addTriangle(bv1, bv2, bv3);
+                 if ( bv1 <= bv2 && bv1 <= bv3 )
+                 {
+                   if (DEBUG && DEBUG_MODE >= LOW)
+                   {
+                     if ( m_currentAdvances == m_numAdvances-1 )
+                     {
+                       print("Adding triangle for these vertices in main mesh " + currentVOnIsland + " " + vertex2 + " " + vertex3 + "\n");
+                     }
+                   }
+                   baseMesh.addTriangle(bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                   triangleAdded = true;
+                 }
+                 else //The triangle has already been added while moving around another island. Fetch its corners
+                 {
+                   triangle = baseMesh.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                   bCornerForVertex = (baseMesh.v(3*triangle) == bv1) ? 3*triangle : (baseMesh.v(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
+                   if ( triangle == -1 )
+                   {
+                     if ( DEBUG && DEBUG_MODE >= LOW )
+                     {
+                       print("Tried finding added triangle in base mesh - returned -1! Error");
+                     }
+                   }
+                 }
                  if ( bTrackedC2 != -1 )
                  {
-                   addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland );                                      
+                   if ( triangleAdded )
+                   {
+                     addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland );                                      
+                   }
+                   else
+                   {
+                     addOppositeForUnusedIsland( baseMesh.p(bCornerForVertex), baseMesh.n(bCornerForVertex), bTrackedC2, bTrackedC3, nextUsedIsland );                                      
+                   }
                  }
                  else
                  {
-                   bFirstC2 = baseMesh.nc-2;
-                   bFirstC3 = baseMesh.nc-1;
+                   if ( triangleAdded )
+                   {
+                     bFirstC2 = baseMesh.nc-2;
+                     bFirstC3 = baseMesh.nc-1;
+                   }
+                   else
+                   {
+                     bFirstC2 = baseMesh.n(bCornerForVertex);
+                     bFirstC3 = baseMesh.p(bCornerForVertex);
+                   }
                  }
 
                  nextUsedIsland = getNextUsedIslandFromCorner( incidentCorner );
+                 if ( DEBUG && DEBUG_MODE >= VERBOSE )
+                 {
+                   print("The next island that is used is " + nextUsedIsland + "from corner " + incidentCorner + "\n");
+                 }
 
-                 bTrackedC2 = baseMesh.nc-2;
-                 bTrackedC3 = baseMesh.nc-1;
+                 if ( triangleAdded )
+                 {
+                   bTrackedC2 = baseMesh.nc-2;
+                   bTrackedC3 = baseMesh.nc-1;
+                 }
+                 else
+                 {
+                   bTrackedC2 = baseMesh.n(bCornerForVertex);
+                   bTrackedC3 = baseMesh.p(bCornerForVertex);
+                 }
                  
                  if (nextUsedIsland != -1)
                  {
@@ -718,7 +805,7 @@ class IslandMesh extends Mesh
            returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
            if ( DEBUG && DEBUG_MODE >= VERBOSE )
            {
-             print("Next vertex " + returnedVertex );
+             print("Setting the current vertex to be " + returnedVertex );
            }
            prevPrevVOnIsland = prevVOnIsland;
            prevVOnIsland = currentVOnIsland;
@@ -734,9 +821,9 @@ class IslandMesh extends Mesh
          {
            if ( m_numAdvances != -1 && m_currentAdvances == m_numAdvances-1 )
            {
-             if ( DEBUG && DEBUG_MODE >= LOW )
+             if ( DEBUG && DEBUG_MODE >= VERBOSE )
              {
-               print("Closing");
+               print("Closing the current island");
              }
            }
            addOppositeForUnusedIsland( bFirstC2, bFirstC3, bTrackedC2, bTrackedC3, nextUsedIsland );
@@ -754,7 +841,15 @@ class IslandMesh extends Mesh
          {
            int island2 = getIslandForVertexExtended( v(n(currentCorner)) );
            int island3 = getIslandForVertexExtended( v(p(currentCorner)) );
-           baseMesh.addTriangle(i, island2, island3);
+           if (DEBUG && DEBUG_MODE >= LOW)
+           {
+             print("Adding triangle for these corners in main mesh " + currentCorner + " " + n(currentCorner) + " " + p(currentCorner) + "\n");
+           }
+
+           if ( v <= island2 && v <= island3 )
+           {
+             baseMesh.addTriangle(i, island2, island3, m_islandVertexNumber.get(v(currentCorner)), m_islandVertexNumber.get(v(n(currentCorner))), m_islandVertexNumber.get(v(p(currentCorner))) );
+           }
            currentCorner = s(currentCorner);
          } while (currentCorner != initCorner);
        }
@@ -764,7 +859,7 @@ class IslandMesh extends Mesh
    void connectMesh()
    {
      m_numAdvances = -1;
-     for (int i = 0; i < baseMesh.G.length; i++)
+     for (int i = 0; i < baseMesh.nv; i++)
      {
        int v = m_vertexForIsland.get(i);
        if ( isIslandVertex( v ) && connectInBaseMesh(v) )
@@ -795,24 +890,67 @@ class IslandMesh extends Mesh
 
                int bv2 = island2;
                int bv3 = island3;
+               
+               int triangle = -1, bCornerForVertex = -1;
+               
+               boolean fTriangleAdded = false;
 
                if ( bv2 != -1 && bv3 != -1 )
                {
-                 baseMesh.addTriangle(bv1, bv2, bv3);
+                 if ( bv1 <= bv2 && bv1 <= bv3 )
+                 {
+                   baseMesh.addTriangle(bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                   fTriangleAdded = true;
+                 }
+                 else //The triangle has already been added while moving around another island. Fetch its corners
+                 {
+                   triangle = baseMesh.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                   bCornerForVertex = (baseMesh.v(3*triangle) == bv1) ? 3*triangle : (baseMesh.v(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
+                   if ( triangle == -1 )
+                   {
+                     if ( DEBUG && DEBUG_MODE >= LOW )
+                     {
+                       print("Tried finding added triangle in base mesh - returned -1! Error");
+                     }
+                   }
+                 }
                  if ( bTrackedC2 != -1 )
                  {
-                   addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland );                                      
+                   if ( fTriangleAdded )
+                   {
+                     addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland );                                      
+                   }
+                   else
+                   {
+                     addOppositeForUnusedIsland( baseMesh.p(bCornerForVertex), baseMesh.n(bCornerForVertex), bTrackedC2, bTrackedC3, nextUsedIsland );                                      
+                   }
                  }
                  else
                  {
-                   bFirstC2 = baseMesh.nc-2;
-                   bFirstC3 = baseMesh.nc-1;
+                   if ( fTriangleAdded )
+                   {
+                     bFirstC2 = baseMesh.nc-2;
+                     bFirstC3 = baseMesh.nc-1;
+                   }
+                   else
+                   {
+                     bFirstC2 = baseMesh.n(bCornerForVertex);
+                     bFirstC3 = baseMesh.p(bCornerForVertex);
+                   }
                  }
 
                  nextUsedIsland = getNextUsedIslandFromCorner( incidentCorner );
-
-                 bTrackedC2 = baseMesh.nc-2;
-                 bTrackedC3 = baseMesh.nc-1;                 
+                 
+                 if ( fTriangleAdded )
+                 {
+                   bTrackedC2 = baseMesh.nc-2;
+                   bTrackedC3 = baseMesh.nc-1;                 
+                 }
+                 else
+                 {
+                   bTrackedC2 = baseMesh.n(bCornerForVertex);
+                   bTrackedC3 = baseMesh.p(bCornerForVertex);
+                 }
                }
                else
                {
@@ -832,9 +970,9 @@ class IslandMesh extends Mesh
          {
            if ( m_numAdvances != -1 && m_currentAdvances == m_numAdvances-1 )
            {
-             if ( DEBUG && DEBUG_MODE >= LOW )
+             if ( DEBUG && DEBUG_MODE >= VERBOSE )
              {
-               print("Closing");
+               print("Closing island " + i);
              }
            }
            addOppositeForUnusedIsland( bFirstC2, bFirstC3, bTrackedC2, bTrackedC3, nextUsedIsland );
@@ -852,103 +990,87 @@ class IslandMesh extends Mesh
          {
            int island2 = getIslandForVertexExtended( v(n(currentCorner)) );
            int island3 = getIslandForVertexExtended( v(p(currentCorner)) );
-           baseMesh.addTriangle(i, island2, island3);
+
+           if ( v <= island2 && v <= island3 )
+           {
+             baseMesh.addTriangle(i, island2, island3, m_islandVertexNumber.get(v(currentCorner)), m_islandVertexNumber.get(v(n(currentCorner))), m_islandVertexNumber.get(v(p(currentCorner))) );
+           }
            currentCorner = s(currentCorner);
          } while (currentCorner != initCorner);
        }
      } //end for loop over base mesh vertices
    }
    
-   /*void connectMesh()
-   {
+   //Populate the m_islandVertexNumber list - the oriented number of each island vertex with respect to a starting point
+   //Also creates the island stream to be sent for the case of expansion
+   void numberVerticesOfIslandsAndCreateStream()
+   { 
      m_numAdvances = -1;
-     for (int i = 0; i < baseMesh.G.length; i++)
+
+     for (int i = 0; i < nv; i++)
+     {
+       m_islandVertexNumber.put(i, -1);
+     }
+     for (int i = 0; i < baseMesh.nv; i++)
      {
        int v = m_vertexForIsland.get(i);
-       if ( isIslandVertex( v ) && connectInBaseMesh(v) )
-       {      
+       int numberVertex = 0;
+      
+       if ( isIslandVertex( v ) )
+       {
+         IslandExpansionStream islandStream = m_islandExpansionManager.addIslandStream();
+     
          int currentVOnIsland = v;
          int prevVOnIsland = v;
          int prevPrevVOnIsland = v;
          int returnedVertex = -1;
-         int bTrackedC2 = -1, bTrackedC3 = -1; //Track the last added triangle corners in the base mesh for this island.
-         int nextUsedIsland = -1; //Track the next used island post a junction / water triangle.
-         int bFirstC2 = -1, bFirstC3 = -1; //Trac the initial triangle, so that the last can be combined post encircling the edges of the island
+         m_islandVertexNumber.put(currentVOnIsland, numberVertex++);
 
-         ArrayList<Integer> cornerList = new ArrayList<Integer>(); //Return the cornerList og JUNCTION and ISOLATEDWATER triangles obtained by swinging around
          do
          {
-           int incidentCorner = incidentTriangleType( currentVOnIsland, prevVOnIsland, JUNCTION, ISOLATEDWATER, cornerList );
-
-           if ( incidentCorner != -1 )
-           {
-             for (int j = 0; j < cornerList.size(); j++)
-             {
-               incidentCorner = cornerList.get(j);
-
-               int vertex2 = v( n( incidentCorner ) );
-               int vertex3 = v( p( incidentCorner ) );
-               int bv1 = i;
-               int island2 = getIslandForVertexExtended( vertex2 );
-               int island3 = getIslandForVertexExtended( vertex3 );
-  
-               int bv2 = island2;
-               int bv3 = island3;
-  
-               if ( bv2 != -1 && bv3 != -1 )
-               {
-                 baseMesh.addTriangle(bv1, bv2, bv3);
-                 if ( bTrackedC2 != -1 )
-                 {
-                   addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland );
-                 }
-                 else
-                 {
-                   bFirstC2 = baseMesh.nc-2;
-                   bFirstC3 = baseMesh.nc-1;
-                 }
-
-                 nextUsedIsland = getNextUsedIslandFromCorner( incidentCorner );
-                 bTrackedC2 = baseMesh.nc-2;
-                 bTrackedC3 = baseMesh.nc-1;
-               }
-               else
-               {
-                 if ( DEBUG && DEBUG_MODE >= LOW )
-                 {
-                   print ("Get a -1 as one of the base vertices incident on a Junction / Water triangle. Error!");
-                 }
-               }
-             }
-           }
            returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
+           int corner = findBeachEdgeCornerForVertex( currentVOnIsland, prevVOnIsland );
+
+           prevPrevVOnIsland = prevVOnIsland;
+           prevVOnIsland = currentVOnIsland;
+           currentVOnIsland = returnedVertex;
+           m_islandVertexNumber.put(currentVOnIsland, numberVertex++);
+         } while ( returnedVertex != -1 );       
+
+         //This time add to expansion stream
+         currentVOnIsland = v;
+         prevVOnIsland = v;
+         prevPrevVOnIsland = v;
+         returnedVertex = -1;
+         numberVertex = 0;
+         
+         int count = 0;
+         do
+         {
+           returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
+           int corner = -1;
+           int r = -1;
+           if ( returnedVertex == -1 )
+           {
+             corner = findBeachEdgeCornerForVertex( currentVOnIsland, v );
+             r = v(p(corner)) == v? m_islandVertexNumber.get(v(n(corner))) : m_islandVertexNumber.get(v(p(corner)));
+           }
+           else
+           { 
+             corner = findBeachEdgeCornerForVertex( currentVOnIsland, returnedVertex );
+             r = v(p(corner)) == returnedVertex? m_islandVertexNumber.get(v(n(corner))) : m_islandVertexNumber.get(v(p(corner)));
+           }
+
+           islandStream.add(G[currentVOnIsland], numberVertex, r);
+           numberVertex++;
+
            prevPrevVOnIsland = prevVOnIsland;
            prevVOnIsland = currentVOnIsland;
            currentVOnIsland = returnedVertex;
          } while ( returnedVertex != -1 );
-         if ( bTrackedC2 != -1 )
-         {
-           addOppositeForUnusedIsland( bFirstC2, bFirstC3, bTrackedC2, bTrackedC3, nextUsedIsland );
-         }
        }
-       else if ( !isIslandVertex(v) ) //Is a water vertex
-       {
-         int initCorner = incidentTriangleType( v, ISOLATEDWATER );
-         int currentCorner = initCorner;
-         if ( DEBUG && DEBUG_MODE >= VERBOSE )
-         {
-           print("Found corner " + currentCorner);
-         }
-         do
-         {
-           int island2 = getIslandForVertexExtended( v(n(currentCorner)) );
-           int island3 = getIslandForVertexExtended( v(p(currentCorner)) );
-           baseMesh.addTriangle(i, island2, island3);
-           currentCorner = s(currentCorner);
-         } while (currentCorner != initCorner);
-       }
-     } //end for loop over base mesh vertices
-   }*/
+     }
+   }
    
    private int getNextUsedIslandFromCorner( int iCorner )
    {
@@ -962,7 +1084,7 @@ class IslandMesh extends Mesh
      {
        if ( DEBUG && DEBUG_MODE >= LOW )
        {
-         print("AddOppositeForUnused " + baseMesh.v(bc2) + " " + baseMesh.v(bc3) + " " + baseMesh.v(btrackedc2) + " " + baseMesh.v(btrackedc3) + " " + nextUsedIsland);
+         print("AddOppositeForUnused " + baseMesh.v(bc2) + " " + baseMesh.v(bc3) + " " + baseMesh.v(btrackedc2) + " " + baseMesh.v(btrackedc3) + " " + nextUsedIsland + "\n");
        }
      }
 
@@ -1147,7 +1269,7 @@ class IslandMesh extends Mesh
      int v = findOtherBeachEdgeVertexForVertex( currentV, prevV, prevPrevV );
      if ( DEBUG && DEBUG_MODE >= VERBOSE )
      {
-       print ("The value of v is " + v );
+       print ("The value of v is " + v + " currentV " + currentV + " prevV " + prevV + "\n");
      }
      if ( v == finalV && currentV != finalV ) 
      {
@@ -1170,12 +1292,16 @@ class IslandMesh extends Mesh
    
    int findBeachEdgeCornerForVertex( int currentV, int otherV )
    {
-     int c = getIslandCornerForVertex( currentV );
+     int c = getIslandCornerForVertex( currentV, otherV );
      int currentCorner = c;
      do
      {
        int otherBeachEdgeVertex1 = findOtherBeachEdgeVertexForTriangleCorners( currentCorner, n(currentCorner) );
        int otherBeachEdgeVertex2 = findOtherBeachEdgeVertexForTriangleCorners( currentCorner, p(currentCorner) );
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
+       {
+         print("findBeachEdgeCornerForVertex currentCorner " + currentCorner + " currentVertex " + currentV + " otherV " + otherV + " otherBeachEdgeVertex1 " + otherBeachEdgeVertex1 + " otherBeachEdgeVertex2 " + otherBeachEdgeVertex2 + "\n");
+       }
        if ( (otherBeachEdgeVertex1 != -1) || (otherBeachEdgeVertex2 != -1) )
        {
          if ( ( currentV == otherV ) || ( currentV != otherV && otherBeachEdgeVertex1 == otherV) )
@@ -1191,31 +1317,36 @@ class IslandMesh extends Mesh
      } while ( currentCorner != c );
      if ( DEBUG && DEBUG_MODE >= LOW )
      {
-       print( "Can't find beach edge corner for currentVertex! Potential bug" );
+       print( "IslandMesh:findBeachEdgeCornerForVertex: Can't find beach edge corner for currentVertex! Potential bug" );
      }
      return -1;
    }
 
    int findOtherBeachEdgeVertexForVertex( int currentV, int prevV, int prevPrevV )
    {
-     int c = getIslandCornerForVertex( currentV );
+     int c = getIslandCornerForVertex( currentV, prevV );
+     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+     {
+       print("findOtherBeachEdgeVertexForVertex: Island corner for vertex is " + c + "\n");
+     }
      int currentCorner = c;
      do
      {
        int otherBeachEdgeVertex1 = findOtherBeachEdgeVertexForTriangleCorners( currentCorner, n(currentCorner) );
        int otherBeachEdgeVertex2 = findOtherBeachEdgeVertexForTriangleCorners( currentCorner, p(currentCorner) );
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
+       {
+         print("Other beach edge " + otherBeachEdgeVertex1 + " " + otherBeachEdgeVertex2 );
+       }
        if ( (otherBeachEdgeVertex1 != -1) || (otherBeachEdgeVertex2 != -1) )
        {
-         if ( ( currentV == prevV ) || ( currentV != prevV && otherBeachEdgeVertex1 != prevV && otherBeachEdgeVertex1 != prevPrevV && otherBeachEdgeVertex1 != -1) )
+         //If the currentV == prevV, we want to return the edge for which, the next leads to a valid beach edge vertex
+         if (  ( ( currentV == prevV ) || ( currentV != prevV && otherBeachEdgeVertex1 != prevV && otherBeachEdgeVertex1 != prevPrevV) ) && otherBeachEdgeVertex1 != -1 )
          {
-           //cm[currentCorner] = 1;
-           //cm[n(currentCorner)] = 1;
            return otherBeachEdgeVertex1;
          }
-         if ( ( currentV == prevV ) || ( currentV != prevV && otherBeachEdgeVertex2 != prevV && otherBeachEdgeVertex2 != prevPrevV && otherBeachEdgeVertex2 != -1) )
+         if ( ( currentV != prevV && otherBeachEdgeVertex2 != prevV && otherBeachEdgeVertex2 != prevPrevV ) && otherBeachEdgeVertex2 != -1 )
          {
-           //cm[currentCorner] = 1;
-           //cm[p(currentCorner)] = 1;
            return otherBeachEdgeVertex2;
          }
        }
@@ -1223,7 +1354,7 @@ class IslandMesh extends Mesh
      } while ( currentCorner != c );
      if ( DEBUG && DEBUG_MODE >= LOW )
      {
-       print( "Can't find beach edge vertex for currentVertex! Potential bug" );
+       print( "IslandMesh::findOtherBeachEdgeForBertex: Can't find beach edge vertex for currentVertex! Potential bug" );
      }
      return -1;
    }

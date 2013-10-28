@@ -35,11 +35,13 @@ class SimplificationController
        m_viewportManager.unregisterMeshFromViewport( m_baseMesh, 1 );
      }
      m_baseMesh = m_islandMesh.populateBaseG(); 
+     m_islandMesh.numberVerticesOfIslandsAndCreateStream();
      m_islandMesh.connectMesh(); 
+     m_baseMesh.computeCForV();
      m_baseMesh.computeBox(); 
      m_viewportManager.registerMeshToViewport( m_baseMesh, 1 ); 
    }
-   else if(key=='L') {IslandMesh m = new IslandMesh();
+   else if(key=='l') {IslandMesh m = new IslandMesh();
                  m.declareVectors();
                  m.loadMeshOBJ(); // M.loadMesh(); 
                  m.updateON();   m.resetMarkers();
@@ -70,6 +72,7 @@ class SimplificationController
      }
      m_islandMesh.onBeforeAdvanceOnIslandEdge();
      m_baseMesh = m_islandMesh.populateBaseG(); 
+     m_islandMesh.numberVerticesOfIslandsAndCreateStream();
      m_baseMesh.Cbox = m_islandMesh.Cbox;
      m_baseMesh.rbox = m_islandMesh.rbox;
      m_viewportManager.registerMeshToViewport( m_baseMesh, 1 ); 
