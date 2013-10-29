@@ -123,19 +123,23 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
     }
     
     //Debug
-    if(pressed) {
-       if (keyPressed&&key=='y')
+    if (pressed) {
+    if (keyPressed&&key=='y')
        { 
          m_mesh.pickc(Pick()); // sets M.sc to the closest corner in M from the pick point
-         print("Here");
          m_mesh.beforeStepWiseExpand();
        }
     }
-    if(key == 't') {
+   
+    super.interactSelectedMesh();
+  }
+  
+  public void onKeyPress()
+  {
+    super.onKeyPress();
+    if(keyPressed&&key == 'G') {
       m_mesh.onStepWiseExpand();
     }
-    
-    super.interactSelectedMesh();
   }
 }
 

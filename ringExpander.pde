@@ -44,7 +44,7 @@ class RingExpander
     if (seed != -1)
     {
       //306, 1329, 480, 805, 100
-      seed = 100;
+      seed = 28;
       print("Seed for ringExpander " + seed);
       m_seed = seed;
     }

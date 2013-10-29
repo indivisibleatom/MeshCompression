@@ -30,6 +30,14 @@ class IslandExpansionStream
   }  
 }
 
+/*
+//Keeps information about hooks and expansions of channels that may be sent to 
+class BaseMeshBookkeeper
+{
+  int[] m_hooks = new int [3*maxnt];               // V table (triangle/vertex indices)
+  
+}*/
+
 class IslandExpansionManager
 {
   private ArrayList<IslandExpansionStream> m_islandStreams;
