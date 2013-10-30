@@ -113,7 +113,6 @@ class IslandMesh extends Mesh
    {
      if (m_selectedIsland != -1 && island[3*i] == m_selectedIsland)
      {
-       print("Here");
        vm[m_vertexForIsland.get(m_selectedIsland)] = 5;
        fill(red);
        shade(i);
@@ -632,10 +631,6 @@ class IslandMesh extends Mesh
        else
        {
          print("Adding water vertex " + (numIslands + countWater) );
-         if (numIslands + countWater == 60)
-         {
-           vm[i] = 5;
-         }
          m_vertexForIsland.put( numIslands + countWater, i );
          m_islandForWaterVert.put( i, numIslands + countWater );
          baseMeshG[ numIslands + countWater ] = G[i]; 
@@ -657,6 +652,7 @@ class IslandMesh extends Mesh
      {
        cm[i] = 0;
      }
+     print("On before advance");
      m_numAdvances = 1;
      m_currentAdvances = 0;
    }
@@ -688,10 +684,6 @@ class IslandMesh extends Mesh
          do
          {
            returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
-           if ( DEBUG && DEBUG_MODE >= VERBOSE )
-           {
-             print("Setting the current vertex to be " + returnedVertex );
-           }
            if (returnedVertex != -1)
            {
              vm[returnedVertex] = 2;
@@ -700,20 +692,39 @@ class IslandMesh extends Mesh
            {
              vm[v] = 2;
            }
-           vm[currentVOnIsland] = 3;
            vm[prevVOnIsland] = 1;
            vm[prevPrevVOnIsland] = 1;
+           vm[currentVOnIsland] = 3;
+           if ( DEBUG && DEBUG_MODE >= VERBOSE )
+           {
+             if ( m_currentAdvances == m_numAdvances - 1 )
+             {
+               print("Setting the current vertex to be " + (returnedVertex == -1 ? v : returnedVertex) + " the last vertex is " + currentVOnIsland + " " + vm[63] + "\n");
+             }
+           }
 
            incidentCorners( returnedVertex == -1 ? v : returnedVertex, currentVOnIsland, cornerList );
 
            for (int j = 0; j < cornerList.size(); j++)
            {
              int incidentCorner = cornerList.get(j);
+             
+             if ( DEBUG && DEBUG_MODE >= VERBOSE )
+             {
+               if ( m_currentAdvances == m_numAdvances - 1)
+               {
+                 print("Corner " + cornerList.get(j) + " ");
+               }
+             }
+
              if ( (triangleType(t(incidentCorner)) == JUNCTION ) || (triangleType(t(incidentCorner)) == ISOLATEDWATER ) )
              {
                if ( DEBUG && DEBUG_MODE >= VERBOSE )
                {
-                 print("Starting from currentVertex " + returnedVertex + " prevVertex " + prevVOnIsland + "bTrackedC2 " + bTrackedC2 + "incidentCorner " + incidentCorner);
+                 if ( m_currentAdvances == m_numAdvances-1 )
+                 {
+                   print("Starting from currentVertex " + returnedVertex + " prevVertex " + prevVOnIsland + "bTrackedC2 " + bTrackedC2 + "incidentCorner " + incidentCorner);
+                 }
                }
 
                int vertex2 = v( n( incidentCorner ) );
@@ -732,15 +743,20 @@ class IslandMesh extends Mesh
                {
                  if ( bv1 <= bv2 && bv1 <= bv3 )
                  {
-                   if (DEBUG && DEBUG_MODE >= LOW)
+                   if ( m_currentAdvances == m_numAdvances-1 )
                    {
-                     if ( m_currentAdvances == m_numAdvances-1 )
-                     {
-                       print("Adding triangle for these vertices in main mesh " + currentVOnIsland + " " + vertex2 + " " + vertex3 + "\n");
-                     }
+                      if (DEBUG && DEBUG_MODE >= VERBOSE)
+                      {
+                        print("Adding triangle for these vertices in main mesh " + (returnedVertex == -1 ? v : returnedVertex) + " " + vertex2 + " " + vertex3 + "\n");
+                      }                 
+                      baseMesh.addTriangle(bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                      triangleAdded = true;
                    }
-                   baseMesh.addTriangle(bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
-                   triangleAdded = true;
+                   else
+                   {
+                     triangle = baseMesh.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                     bCornerForVertex = (baseMesh.v(3*triangle) == bv1) ? 3*triangle : (baseMesh.v(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
+                   }
                  }
                  else //The triangle has already been added while moving around another island. Fetch its corners
                  {
@@ -754,16 +770,22 @@ class IslandMesh extends Mesh
                      }
                    }
                  }
-                 if ( bTrackedC2 != -1 )
+                 if ( bTrackedC2 != -1 ) //If junction / water has been encountered thus far
                  {
                    if ( triangleAdded )
                    {
-                     addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+                     if ( m_currentAdvances == m_numAdvances-1 )
+                     {
+                       addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+                     }
                      triangleStripCurrent = new ArrayList<Boolean>();
                    }
                    else
                    {
-                     addOppositeForUnusedIsland( baseMesh.p(bCornerForVertex), baseMesh.n(bCornerForVertex), bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+                     if ( m_currentAdvances == m_numAdvances-1 )
+                     {
+                       addOppositeForUnusedIsland( baseMesh.p(bCornerForVertex), baseMesh.n(bCornerForVertex), bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+                     }
                      triangleStripCurrent = new ArrayList<Boolean>();
                    }
                  }
@@ -816,24 +838,49 @@ class IslandMesh extends Mesh
              } //If juntion or isolated water corner
              else //Not junction and isolated water
              {
-               if ( bTrackedC2 == -1 )
+               if ( j != 0 && j != cornerList.size() - 1 ) //The first corner goes from last island to this and the last corner goes from this island to the next
                {
-                 triangleStripInitial.add(false);
-               }
-               else
-               {
-                 triangleStripCurrent.add(false);
+                 if ( bTrackedC2 == -1 )
+                 {
+                   if ( DEBUG && DEBUG_MODE >= VERBOSE )
+                   {
+                     if ( m_currentAdvances == m_numAdvances-1 )
+                     {
+                       print("Adding false to initial triangle strip ");
+                     }
+                   }
+                   triangleStripInitial.add(false);
+                 }
+                 else 
+                 {
+                   if ( DEBUG && DEBUG_MODE >= VERBOSE )
+                   {
+                     if ( m_currentAdvances == m_numAdvances-1 )
+                     {
+                       print("Adding false to triangleStrip ");
+                     }
+                   }
+                   //TODO msati3: Temp remove after debugging
+                   /*if (cornerList.get(j) == 572 || cornerList.get(j) == 573)
+                   {
+                     print("Here adding false to current");
+                   }*/
+                   triangleStripCurrent.add(false);
+                 }
                }
              }
            } //end for over cornerlist
-           vm[v] = 1;
+           if ( DEBUG && DEBUG_MODE >= VERBOSE )
+           {
+             print("\n");
+           }
            m_currentAdvances++;
            if ( m_currentAdvances >= m_numAdvances )
            {
              if ( DEBUG && DEBUG_MODE >= VERBOSE )
              {
                print ("NumAdvances " + m_numAdvances);
-             }
+             } 
              m_numAdvances++;
              return;
            }
@@ -841,10 +888,35 @@ class IslandMesh extends Mesh
            prevPrevVOnIsland = prevVOnIsland;
            prevVOnIsland = currentVOnIsland;
            currentVOnIsland = returnedVertex;
-         } while ( returnedVertex != -1 );
+           
+           if ( bTrackedC2 == -1 ) //Each time we advance on the island beach edge, add a triangleStrip.true
+           {
+             if ( DEBUG && DEBUG_MODE >= VERBOSE )
+             {
+               if ( m_currentAdvances == m_numAdvances-1 )
+               {
+                 print("Adding true to initial triangleStrip ");
+               }
+             }
+             triangleStripInitial.add(true);
+           }
+           else
+           {
+             if ( DEBUG && DEBUG_MODE >= VERBOSE )
+             {
+               if ( m_currentAdvances == m_numAdvances-1 )
+               {
+                 print("Adding true to triangleStrip ");
+               }
+             }
+             triangleStripCurrent.add(true);
+           }
+         } while ( returnedVertex != -1 ); //end advancing over the beach edges
+         vm[v] = 1;
+         vm[prevVOnIsland] = 1;
          if ( bTrackedC2 != -1 )
          {
-           if ( m_numAdvances != -1 && m_currentAdvances == m_numAdvances-1 )
+           if ( m_currentAdvances == m_numAdvances-1 )
            {
              if ( DEBUG && DEBUG_MODE >= VERBOSE )
              {
@@ -855,7 +927,10 @@ class IslandMesh extends Mesh
            {
              triangleStripCurrent.add( triangleStripInitial.get(k) );
            }
-           addOppositeForUnusedIsland( bFirstC2, bFirstC3, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+           if ( m_currentAdvances == m_numAdvances-1 )
+           {
+             addOppositeForUnusedIsland( bFirstC2, bFirstC3, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+           }
            triangleStripCurrent = new ArrayList<Boolean>();
            triangleStripInitial = new ArrayList<Boolean>();
          }
@@ -872,7 +947,7 @@ class IslandMesh extends Mesh
          {
            int island2 = getIslandForVertexExtended( v(n(currentCorner)) );
            int island3 = getIslandForVertexExtended( v(p(currentCorner)) );
-           if (DEBUG && DEBUG_MODE >= LOW)
+           if (DEBUG && DEBUG_MODE >= VERBOSE)
            {
              print("Adding triangle for these corners in main mesh " + currentCorner + " " + n(currentCorner) + " " + p(currentCorner) + "\n");
            }
@@ -999,19 +1074,31 @@ class IslandMesh extends Mesh
              }//If junction or isolated water
              else //Not junction and isolated water
              {
-               if ( bTrackedC2 == -1 )
+               if ( j != 0 && j != cornerList.size() - 1 ) //The first corner goes from last island to this and the last corner goes from this island to the next
                {
-                 triangleStripInitial.add(false);
-               }
-               else
-               {
-                 triangleStripCurrent.add(false);
+                 if ( bTrackedC2 == -1 )
+                 {
+                   triangleStripInitial.add(false);
+                 }
+                 else
+                 {
+                   triangleStripCurrent.add(false);
+                 }
                }
              }
            } //For each corner
            prevPrevVOnIsland = prevVOnIsland;
            prevVOnIsland = currentVOnIsland;
            currentVOnIsland = returnedVertex;
+           
+           if ( bTrackedC2 == -1 )
+           {
+             triangleStripInitial.add(true);
+           }
+           else
+           {
+             triangleStripCurrent.add(true);
+           }
          } while ( returnedVertex != -1 );
          if ( bTrackedC2 != -1 )
          {
@@ -1059,8 +1146,6 @@ class IslandMesh extends Mesh
    //Also creates the island stream to be sent for the case of expansion
    void numberVerticesOfIslandsAndCreateStream()
    { 
-     m_numAdvances = -1;
-
      for (int i = 0; i < nv; i++)
      {
        m_islandVertexNumber.put(i, -1);
@@ -1136,7 +1221,7 @@ class IslandMesh extends Mesh
    {
      if ( m_numAdvances != -1 && m_currentAdvances == m_numAdvances-1 )
      {
-       if ( DEBUG && DEBUG_MODE >= LOW )
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
        {
          print("AddOppositeForUnused " + baseMesh.v(bc2) + " " + baseMesh.v(bc3) + " " + baseMesh.v(btrackedc2) + " " + baseMesh.v(btrackedc3) + " " + nextUsedIsland + "\n");
        }
@@ -1176,14 +1261,40 @@ class IslandMesh extends Mesh
        }
      }
 
-     baseMesh.O[ corner1 ] = corner2;
-     baseMesh.O[ corner2 ] = corner1;
+     if ( m_numAdvances == -1 || m_currentAdvances == m_numAdvances-1 )
+     {
+       baseMesh.O[ corner1 ] = corner2;
+       baseMesh.O[ corner2 ] = corner1;
      
-     baseMesh.m_triangleStrips[ corner1 ] = triangleStrip;
-     baseMesh.m_triangleStrips[ corner2 ] = triangleStrip;
+       if ( baseMesh.m_triangleStrips[ corner1 ] == null )
+       {
+         if ( DEBUG && DEBUG_MODE >= LOW && (m_numAdvances != -1 || corner1 == 1 || corner2 == 1) )
+         {
+           print("Corners: " + corner1 + " " + corner2 + " Triangle strip for last added opposite: ");
+           for (int i = 0; i < triangleStrip.size(); i++ )
+           {
+             print (triangleStrip.get(i) + " ");
+           }
+         }
+         ChannelExpansion channelExpansion = new ChannelExpansion( triangleStrip );
+         baseMesh.m_triangleStrips[ corner1 ] = channelExpansion;
+         baseMesh.m_triangleStrips[ corner2 ] = channelExpansion;
+       }
+       else
+       {
+         if ( DEBUG && DEBUG_MODE >= LOW && m_numAdvances != -1 )
+         {
+           print("Triangle strip has already been added");
+         }
+       }
+       if ( DEBUG && DEBUG_MODE >= LOW && m_numAdvances != -1 )
+       {
+         print("\n");
+       }
 
-     baseMesh.cm[ corner1 ] = 2;
-     baseMesh.cm[ corner2 ] = 2;
+       baseMesh.cm[ corner1 ] = 2;
+       baseMesh.cm[ corner2 ] = 2;
+     }
    }
    
    private int getNonIslandTriangleForEdge( int v1, int v2 )

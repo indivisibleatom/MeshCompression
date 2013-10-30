@@ -310,7 +310,6 @@ void purge(int k) {for(int i=0; i<nt; i++) visible[i]=Mt[i]==k;} // hides triang
   
   void computeCForV() {
     for (int i = 0; i < nv; i++){ CForV[i] = -1; }
-    print("Here" + nc); 
     for (int i = 0; i < nc; i++){ if (CForV[v(i)] == -1) { CForV[v(i)] = i; } }
   }
 
