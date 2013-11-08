@@ -1,9 +1,7 @@
 int ISLAND_SIZE = 5;
 int MAX_ISLANDS = 40000;
-int waterColor = 8;
-int landColor = 9;
 
-int numIslands = 0;
+int numIslands = 0; //TODO msati3: Move this inside islandMesh
 StepWiseRingExpander g_stepWiseRingExpander = new StepWiseRingExpander();
 
 class SubmersionCounter
@@ -196,9 +194,9 @@ class RingExpanderResult
   private int m_numTrianglesColored;
   private Stack<VisitState> m_visitStack;
 
-  Mesh m_mesh;
+  IslandMesh m_mesh;
 
-  public RingExpanderResult(Mesh m, int seed, int[] parentTrianglesArray)
+  public RingExpanderResult(IslandMesh m, int seed, int[] parentTrianglesArray)
   {
     m_seed = seed;
     m_parentTArray = parentTrianglesArray;
@@ -208,7 +206,7 @@ class RingExpanderResult
 
   private void setColor(int corner)
   {
-    m_mesh.tm[m_mesh.t(corner)] = landColor;
+    m_mesh.tm[m_mesh.t(corner)] = ISLAND;
   }
 
   private boolean isValidChild(int childCorner, int parentCorner)
@@ -244,7 +242,6 @@ class RingExpanderResult
       VisitState currentState = m_visitStack.pop();
       int corner = currentState.corner();
       m_numTrianglesColored++;
-      m_mesh.cm[corner] = 1;
       setColor(corner);
 
       if (isValidChild(m_mesh.l(corner), corner))
@@ -267,7 +264,7 @@ class RingExpanderResult
 
     for (int i = 0; i < m_mesh.nt; i++)
     {
-      m_mesh.tm[i] = waterColor;
+      m_mesh.tm[i] = WATER;
     }
 
     m_numTrianglesColored = 0;
@@ -334,12 +331,16 @@ class RingExpanderResult
     {
       shoreVerts[index++] = -1;
     }
+    if ( DEBUG && DEBUG_MODE >= VERBOSE )
+    {
+      print("Merged shoreVertices " + shoreVerts[0] + " " + shoreVerts[1]);
+    }
   }
 
   private void markSubmerged(int tri)
   {
     markUnVisited(tri);    
-    m_mesh.tm[tri] = waterColor;
+    m_mesh.tm[tri] = WATER;
   }
 
   private boolean hasVertices(int tri, int[] shoreVerts)
@@ -421,12 +422,12 @@ class RingExpanderResult
     while (!succStack.empty())
     {
       corner = succStack.pop().corner();
-      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
       {
         succStack.push(new VisitState(m_mesh.r(corner)));
         numSuc++;
       }
-      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
       {
         succStack.push(new VisitState(m_mesh.l(corner)));
         numSuc++;
@@ -438,11 +439,11 @@ class RingExpanderResult
   private int getNumChild(int corner)
   {
     int numChild = 0;
-    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
     {
       numChild++;
     }
-    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
     {
       numChild++;
     }
@@ -461,11 +462,11 @@ class RingExpanderResult
 
   private int getChild(int corner)
   {
-    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+    if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
     {
       return m_mesh.l(corner);
     }
-    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+    if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
     {
       return m_mesh.r(corner);
     } 
@@ -474,10 +475,11 @@ class RingExpanderResult
 
   private void markVisited(int triangle, int islandNumber)
   {
-    m_mesh.triangleIsland[triangle] =  
+    m_mesh.triangleIsland[triangle] =  islandNumber;
     m_mesh.island[m_mesh.c(triangle)] = islandNumber;
     m_mesh.island[m_mesh.n(m_mesh.c(triangle))] = islandNumber;
     m_mesh.island[m_mesh.p(m_mesh.c(triangle))] = islandNumber;
+    markCorner(m_mesh.c(triangle), islandNumber); markCorner(m_mesh.n(m_mesh.c(triangle)), islandNumber); markCorner(m_mesh.p(m_mesh.c(triangle)), islandNumber);
   }
   
   private void markUnVisited(int triangle)
@@ -486,6 +488,17 @@ class RingExpanderResult
     m_mesh.island[m_mesh.c(triangle)] = -1;
     m_mesh.island[m_mesh.n(m_mesh.c(triangle))] = -1;
     m_mesh.island[m_mesh.p(m_mesh.c(triangle))] = -1;
+    unmarkCorner(m_mesh.c(triangle)); unmarkCorner(m_mesh.n(m_mesh.c(triangle))); unmarkCorner(m_mesh.p(m_mesh.c(triangle)));
+  }
+  
+  private void markCorner( int corner, int islandNumber )
+  {
+    m_mesh.cm[corner] = 100+islandNumber;
+  }
+  
+  private void unmarkCorner( int corner )
+  {
+    m_mesh.cm[corner] = 0;
   }
 
   //Perform an actual submerge from a corner, the number of triangles to submerge and the bitString -- the path to follow for the submersion
@@ -530,7 +543,6 @@ class RingExpanderResult
           {
             countTwo++;
             int popped = -1;
-            //TODO msati3: Fix empty stack bug for seed 166
             popped = bitString.pop();
             cur.setNumChild(2);
             cur.setFirstState(false);
@@ -807,11 +819,11 @@ class RingExpanderResult
     while (!submergeStack.empty())
     {
       corner = submergeStack.pop();
-      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
       {
         submergeStack.push(m_mesh.r(corner));
       }
-      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
       {
         submergeStack.push(m_mesh.l(corner));
       }
@@ -819,32 +831,84 @@ class RingExpanderResult
     }
   }
   
-  private void submergeOther(int corner, int[] shoreVerts)
+  private void submergeOther(int corner, int[] shoreVerts, boolean fCompleteSubmerge)
   {
     Stack<Integer> submergeStack = new Stack<Integer>();
     submergeStack.push(corner);
+    boolean fBeachheadReached = false;
     
     while (!submergeStack.empty())
     {
       corner = submergeStack.pop();
+      if (fCompleteSubmerge && !fBeachheadReached)
+      {
+        if (m_mesh.tm[m_mesh.t(corner)] != WATER)
+        {
+          fBeachheadReached = true;
+        }
+      }
+
       if (!hasVertices(m_mesh.t(corner), shoreVerts))
       {
-        if (getNumSuccessors(corner) < ISLAND_SIZE)
+        int numSucc = getNumSuccessors(corner); //There case be the case where this is an island - in this case (fCompleteSubmerge = false), we submerge as desired.
+                                                //The other two cases are the current corner was a beachHead or the current corner was a water that is being submerged. For both cases, we are good (for second case, getNumSucc returns -1) and we leave the 
+                                                //remaining unsubmerged. For the first case, getNumSuccessors returns ISLAND_SIZE - 1
+        if ( numSucc + 1 < ISLAND_SIZE )
         {
+          if ( fCompleteSubmerge )
+          {
+            if ( fBeachheadReached )
+            {
+              numIslands--;
+              if ( DEBUG && DEBUG_MODE >= LOW )
+              {
+                print("Special config: calling renumber with " + numIslands + " " + m_mesh.island[corner] + "at corner " + corner + "\n");
+              }
+              renumberIslands(m_mesh.island[corner]);
+            }
+            else
+            {
+              if ( DEBUG && DEBUG_MODE >= LOW )
+              {
+                print("Special config: not expected to happen!! with " + numIslands + " " + m_mesh.island[corner] + "at corner " + corner + "\n");
+              }
+            }
+          }
           submergeAll(corner);
         }
       }
       else
       {
-        if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+        if ( fCompleteSubmerge && !fBeachheadReached )
         {
-          submergeStack.push(m_mesh.r(corner));
+          if (isValidChild(m_mesh.r(corner), corner) && isValidChild(m_mesh.l(corner), corner))
+          {
+            if (DEBUG && DEBUG_MODE >= LOW)
+            {
+              print("RingExpanderResult::submergeOther - very special case -- could be buggy. Marking for warnings when encountered");
+            }
+          }
+          if (isValidChild(m_mesh.r(corner), corner))
+          {
+            submergeStack.push(m_mesh.r(corner));
+          }
+          if (isValidChild(m_mesh.l(corner), corner))
+          {
+            submergeStack.push(m_mesh.l(corner));
+          }
         }
-        if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+        else
         {
-          submergeStack.push(m_mesh.l(corner));
+          if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
+          {
+            submergeStack.push(m_mesh.r(corner));
+          }
+          if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
+          {
+            submergeStack.push(m_mesh.l(corner));
+          }
+          markSubmerged(m_mesh.t(corner));
         }
-        markSubmerged(m_mesh.t(corner));
       }
     }
   }
@@ -918,6 +982,19 @@ class RingExpanderResult
             {
               if (hasVertices(m_mesh.t(corner), shoreVertsR) || hasVertices(m_mesh.t(corner), shoreVertsL))
               {
+                if ( DEBUG && DEBUG_MODE >= HIGH )
+                {
+                  print("Here " + m_mesh.v(corner) + " " + shoreVertsR[0] + " " + shoreVertsR[1] + " " + shoreVertsL[0] + " " + shoreVertsL[1] );
+                }
+                m_mesh.cc = corner;
+                if (hasVertices(m_mesh.t(corner), shoreVertsR) && hasVertices(m_mesh.t(corner), shoreVertsL))
+                {
+                  //This may be the case, when we have just formed an island one the left and right subtrees and are checking for triangles to submerge e
+                  //This may be the case when we are propagating our submersion vertices, after having formed an island, to come to an isolated vertex. In that case
+                  //we decrease the number of islands and submerge one of the islands
+                  print("Doing a complete submersion start at " + corner + " in direction " + m_mesh.l(corner));
+                  submergeOther(m_mesh.l(corner), shoreVertsR, true/*fCompleteSubmerge*/);
+                }
                 mergeShoreVertices(m_mesh.t(corner), shoreVertsR, shoreVertsL, curShoreVerts);
                 markSubmerged(m_mesh.t(corner));
                 cur.setResult(-1);
@@ -933,7 +1010,7 @@ class RingExpanderResult
               int other = rNeg? m_mesh.l(corner) : m_mesh.r(corner);
               if (hasVertices(m_mesh.t(corner), shoreVertsNeg))
               {
-                submergeOther(other, shoreVertsNeg);
+                submergeOther(other, shoreVertsNeg, false/*fCompleteSubmerge*/);
                 mergeShoreVertices(m_mesh.t(corner), shoreVertsR, shoreVertsL, curShoreVerts);
                 markSubmerged(m_mesh.t(corner));
                 cur.setResult(-1);
@@ -984,7 +1061,6 @@ class RingExpanderResult
               }
               else if (numL > numTrianglesToSubmerge || numR > numTrianglesToSubmerge)
               {
-                print("Here");
                 //Select to submerge the side that leads to lesser submersions
                 if (numL < numR)
                 {
@@ -1002,7 +1078,10 @@ class RingExpanderResult
               }
               else //extremely bad case. Submerge the entire island :O..can't be helped.
               {
-                print("Here as well");
+                if ( DEBUG && DEBUG_MODE >= HIGH )
+                {
+                  print("Here as well");
+                }
                 performSubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringL);
                 performSubmerge(m_mesh.l(corner), numTrianglesToSubmerge, bitStringR);
                 markSubmerged(m_mesh.t(corner));
@@ -1078,27 +1157,44 @@ class RingExpanderResult
     Stack<Integer> markStack = new Stack<Integer>();
     markStack.push(corner);
     int count = 0;
+    char ch1, ch2, ch = 0;
 
     while (!markStack.empty())
     {
+      ch1 = 0; ch2 = 0; ch = 0;
       corner = markStack.pop();
-      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != waterColor)
+      if (isValidChild(m_mesh.r(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.r(corner))] != WATER)
       {
         markStack.push(m_mesh.r(corner));
       }
-      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != waterColor)
+      if (isValidChild(m_mesh.l(corner), corner) && m_mesh.tm[m_mesh.t(m_mesh.l(corner))] != WATER)
       {
         markStack.push(m_mesh.l(corner));
       }
+
       markVisited(m_mesh.t(corner), islandNumber);
-      count++;
-    }
-    if (islandNumber == 6)
-    {
-      print("Count " + count);
     }
   }
-
+  
+  private void renumberIslands(int islandNumber)
+  {
+    if (islandNumber == -1)
+    {
+      if ( DEBUG && DEBUG_MODE >= LOW )
+      {
+        print("RingExpanderResult::renumberIsland - supplying -1 as islandNumber. Bug!");
+      }
+      return;
+    }
+    for (int i = 0; i < m_mesh.nt; i++)
+    {
+      if ( m_mesh.island[3*i] > islandNumber )
+      {
+        markVisited(i, m_mesh.island[3*i]-1);
+      }
+    }
+  }
+ 
   private int getLength(int corner)
   {
     int rightLen = 0;
@@ -1173,7 +1269,10 @@ class RingExpanderResult
     cornerToStart = getCornerOnLR(cornerToStart);
     if (cornerToStart == -1)
     {
-      print("Correct corner not found. Returning");
+      if (DEBUG && DEBUG_MODE >= LOW)
+      {
+        print("Correct corner not found. Returning");
+      }
       return ;  
     }
     
@@ -1207,13 +1306,13 @@ class RingExpanderResult
     {
       if (length < ISLAND_SIZE && length != -1)
       {
-        numIslands--;
         submergeAll(cornerToStart);
         g_submersionCounter.incBadSubmersion();
       }
+       numIslands--;
     }
 
-    print("\nThe selected corner for starting is " + m_mesh.cc);
+    print("\nThe selected corner for starting is " + cornerToStart);
     print("The length of the last island is " + length);
     print("Number of islands is " + numIslands);
     print("Number of submersions " + g_submersionCounter.numSubmersions() + " number of bad submersions " + g_submersionCounter.numBadSubmersions());
