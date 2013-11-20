@@ -1,3 +1,33 @@
+class STypeTriangleStateV
+{
+  private int m_v1;
+  private int m_v2;
+  
+  public STypeTriangleStateV( int v1, int v2 )
+  {
+    m_v1 = v1;
+    m_v2 = v2;
+  }
+  
+  public int v1() { return m_v1; }
+  public int v2() { return m_v2; }
+}
+
+class SOffsetState
+{
+  private int m_e;
+  private int m_s;
+  
+  public SOffsetState( int e, int s )
+  {
+    m_e = e;
+    m_s = s;
+  }
+  
+  public int e() { return m_e; }
+  public int s() { return m_s; }
+}
+
 class ChannelExpansion
 {
   ChannelExpansion( ArrayList<Boolean> expansion )
@@ -114,29 +144,138 @@ class BaseMesh extends Mesh
     m_expansionManager = manager;
   }
   
+  //Adds a triangle in mesh, with vertices offset by base offset
+  private void addTriangleWithOffset(int baseOffset, int v1, int v2, int v3)
+  {
+    if (DEBUG && DEBUG_MODE >= LOW)
+    {
+      print("Adding triangle withoffset " + (baseOffset + v1) + " " + (baseOffset + v2) + " " + (baseOffset + v3) + "\n");
+    }
+    addTriangle( baseOffset + v1, baseOffset + v2, baseOffset + v3 );
+  }
+  
+  private int getNext( int v )
+  {
+    return v+1;
+  }
+  
+  private int getPrev( int v )
+  {
+    return v-1;
+  }
+  
+  //Uses the clers string of island expansion to add to the V table of the base mesh, from the base offset
+  private void decompressConnectivity( String clersString, int baseOffset )
+  {
+    //Preprocess
+    Stack<SOffsetState> sOffsetState = new Stack<SOffsetState>();
+
+    int[] sOffsets = new int[VERTICES_PER_ISLAND];
+    for (int i = 0; i < VERTICES_PER_ISLAND; i++)
+    {
+      sOffsets[i] = -1;
+    }
+
+    int e = 0;
+    int s = 0;
+    int d = 0;
+    for (int i = 0; i < clersString.length(); i++)
+    {
+      char ch = clersString.charAt(i);
+      switch (ch)
+      {
+        case 's': e-=1;
+                  sOffsetState.push(new SOffsetState(e,s));
+                  s+=1;
+                  d+=1;
+                  break;
+        case 'l':
+        case 'r': e+=1;
+                  break;
+        case 'e': e+=3;
+                  d-=1;
+                  if ( d < 0 )
+                  {
+                    if ( i != clersString.length() - 1 )
+                    {
+                      if ( DEBUG && DEBUG_MODE >= LOW )
+                      {
+                        print("Decompress connectivity - negative d without ending of clers string!!\n");
+                      }
+                    }
+                  }
+                  else
+                  {
+                    SOffsetState state = sOffsetState.pop();
+                    sOffsets[state.s()] = e - state.e() - 2;
+                  }
+                  break;
+      }
+    }
+    
+    //Generate
+    int currentV1 = 0;
+    int currentV2 = VERTICES_PER_ISLAND - 1;
+    int currentVOther = -1;
+    Stack<STypeTriangleStateV> sState = new Stack<STypeTriangleStateV>();
+    s = 0;
+    
+    for (int i = 0; i < clersString.length(); i++)
+    {
+      char ch = clersString.charAt(i);    
+      if ( DEBUG && DEBUG_MODE >= VERBOSE )
+      {
+        print("Decompress connectivity - clers character " + ch + "\n");
+      }
+      switch (ch)
+      {
+        case 'l': addTriangleWithOffset( baseOffset, currentV1, getNext(currentV1), currentV2 );
+                  currentV1 = getNext(currentV1); 
+                  break;
+        case 'r': addTriangleWithOffset( baseOffset, currentV1, getPrev(currentV2), currentV2 );
+                  currentV2 = getPrev(currentV2);
+                  break;
+        case 'e': addTriangleWithOffset( baseOffset, currentV1, getNext(currentV1), currentV2 );
+                  if ( sState.isEmpty() )
+                  {
+                    if ( i != clersString.length() - 1 )
+                    {
+                      if ( DEBUG && DEBUG_MODE >= LOW )
+                      {
+                        print("Decompress connectivity - e encountered when the s stack is empty!!\n");
+                      }
+                    }
+                  }
+                  else
+                  {
+                    STypeTriangleStateV state = sState.pop();
+                    currentV1 = state.v1();
+                    currentV2 = state.v2();
+                  }
+                  break;                    
+        case 's': int offset = sOffsets[s];
+                  addTriangleWithOffset( baseOffset, currentV1, currentV1 + offset + 1, currentV2);
+                  int otherV1 = currentV1 + offset + 1;
+                  int otherV2 = currentV2;
+                  currentV2 = currentV1 + offset + 1;
+                  sState.push( new STypeTriangleStateV( otherV1, otherV2 ) );
+                  break;
+      }
+    }
+  }
+  
   private int addIslandGeometry( int islandNumber )
   {
     m_expansionIndex[ islandNumber ] = nv;
     pt[] geometry = m_expansionManager.getStream( islandNumber ).getG();
-    int[] r = m_expansionManager.getStream( islandNumber ).getR();
+    String clersString = m_expansionManager.getStream( islandNumber ).getClersString();
     for (int i = 0; i < geometry.length; i++)
     {
       addVertex( geometry[i] );
     }
     
-    for (int i = 0; i < geometry.length; i++)
-    {
-      addTriangle( m_expansionIndex[ islandNumber ] + i, m_expansionIndex[ islandNumber ] + (i + 1) % geometry.length , m_expansionIndex[ islandNumber ] + r[i] );
-      tm[nt-1] = ISLAND;
-      tm[ islandNumber ] = 0;
-    }
-    for (int i = 0; i < 3*nt; i++)
-    {
-      if (G[v(i)] == null)
-      {
-        print( i / 3 + " " );
-      }
-    }
+    decompressConnectivity( clersString, m_expansionIndex[ islandNumber ] );
+    
     return geometry.length;
   }
   

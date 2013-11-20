@@ -1,22 +1,34 @@
 class IslandExpansionStream
 {
   private pt []m_G;
-  private int[]m_R;
+  private String m_clersString;
+  private ArrayList< LagoonExpansionStream > m_lagoonStreams;
   
   IslandExpansionStream()
   {
-    m_R = new int[ISLAND_SIZE + 2];
-    m_G = new pt[ISLAND_SIZE + 2];
+    m_G = new pt[VERTICES_PER_ISLAND];
+    m_lagoonStreams = new ArrayList<LagoonExpansionStream>();
   }
   
-  void add(pt G, int i, int R)
+  void add(pt G, int i)
   {
     m_G[i] = P( G );
-    m_R[i] = R;
     if ( DEBUG && DEBUG_MODE >= VERBOSE )
     {
-      print ("Adding G " + i + " R " + m_R[i]);
+      print ("Adding G " + i );
     }
+  }
+  
+  void setClersString(String clersString)
+  {
+    m_clersString = clersString;
+  }
+  
+  LagoonExpansionStream addLagoonExpansionStream()
+  {
+    LagoonExpansionStream lagoonStream = new LagoonExpansionStream();
+    m_lagoonStreams.add(lagoonStream);
+    return lagoonStream;
   }
   
   pt[] getG()
@@ -24,9 +36,9 @@ class IslandExpansionStream
     return m_G;
   }
   
-  int[] getR()
+  String getClersString()
   {
-    return m_R;  
+    return m_clersString;  
   }  
 }
 

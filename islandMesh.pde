@@ -9,6 +9,21 @@ int JUNCTION = 6;
 int CAP = 7;
 int ISLAND = 9;
 
+class STypeTriangleState
+{
+  private int m_corner1;
+  private int m_corner2;
+  
+  public STypeTriangleState( int corner1, int corner2 )
+  {
+    m_corner1 = corner1;
+    m_corner2 = corner2;
+  }
+  
+  public int corner1() { return m_corner1; }
+  public int corner2() { return m_corner2; }
+}
+
 class IslandMesh extends Mesh
 {
  boolean m_fDrawIsles = false;
@@ -587,6 +602,11 @@ class IslandMesh extends Mesh
        print( "IslandMesh::findOtherBeachEdgeForBertex: Can't find beach edge vertex for currentVertex! Potential bug" );
      }
      return -1;
+   }
+   
+   private boolean isLagoonTriangleForCorner( int corner1 )
+   {
+     return (triangleType( t(corner1) ) == LAGOON);
    }
  
    private int getNumWaterVerts()
@@ -1332,6 +1352,7 @@ class IslandMesh extends Mesh
          int prevVOnIsland = v;
          int prevPrevVOnIsland = v;
          int returnedVertex = -1;
+         islandStream.add(G[currentVOnIsland], numberVertex);         
          m_islandVertexNumber.put(currentVOnIsland, numberVertex++);
 
          do
@@ -1342,40 +1363,25 @@ class IslandMesh extends Mesh
            prevPrevVOnIsland = prevVOnIsland;
            prevVOnIsland = currentVOnIsland;
            currentVOnIsland = returnedVertex;
-           m_islandVertexNumber.put(currentVOnIsland, numberVertex++);
-         } while ( returnedVertex != -1 );       
 
-         //This time add to expansion stream
-         currentVOnIsland = v;
-         prevVOnIsland = v;
-         prevPrevVOnIsland = v;
-         returnedVertex = -1;
-         numberVertex = 0;
-         
-         int count = 0;
-         do
-         {
-           returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
-           int corner = -1;
-           int r = -1;
-           if ( returnedVertex == -1 )
+           if ( currentVOnIsland != -1 )
            {
-             corner = findBeachEdgeCornerForVertex( currentVOnIsland, v );
-             r = v(p(corner)) == v? m_islandVertexNumber.get(v(n(corner))) : m_islandVertexNumber.get(v(p(corner)));
+             islandStream.add(G[currentVOnIsland], numberVertex);         
+             m_islandVertexNumber.put(currentVOnIsland, numberVertex++);
            }
-           else
-           { 
-             corner = findBeachEdgeCornerForVertex( currentVOnIsland, returnedVertex );
-             r = v(p(corner)) == returnedVertex? m_islandVertexNumber.get(v(n(corner))) : m_islandVertexNumber.get(v(p(corner)));
-           }
-
-           islandStream.add(G[currentVOnIsland], numberVertex, r);
-           numberVertex++;
-
-           prevPrevVOnIsland = prevVOnIsland;
-           prevVOnIsland = currentVOnIsland;
-           currentVOnIsland = returnedVertex;
          } while ( returnedVertex != -1 );
+         
+         if ( DEBUG && DEBUG_MODE >= VERBOSE )
+         {
+           print("Compressing island " + i + " global vertex start index " + m_vertexForIsland.get(i) + " global vertex end index " + prevVOnIsland + "\n");
+         }
+         String clersString = compressIsland( m_vertexForIsland.get(i), prevVOnIsland );
+         islandStream.setClersString( clersString );
+         if ( DEBUG && DEBUG_MODE >= VERBOSE )
+         {
+           print("The clersString for island " + i + "is " + clersString + "\n");
+         }
+         compressIslandLagoons( i );
        }
        else //!isIslandVertex - waterVertex
        { 
@@ -1383,7 +1389,263 @@ class IslandMesh extends Mesh
        }
      }
    }
+   
+   //Given three vertices (int the island mesh), belonging to a single island, find out the CLERS type of that triangle
+   char getCharForIslandTriangle( int vOther, int v1, int v2 )
+   {
+     int vIslandOther = m_islandVertexNumber.get(vOther);
+     int v1Island = m_islandVertexNumber.get(v1);
+     int v2Island = m_islandVertexNumber.get(v2);
+     
+     if ( (vIslandOther == v1Island + 1) && (vIslandOther == v2Island - 1) )
+     {
+       return 'e';
+     }
+     else if (vIslandOther == v1Island + 1)
+     {
+       return 'l';
+     }
+     else if (vIslandOther == v2Island -1)
+     {
+       return 'r';
+     }
+     return 's'; //TODO msati3: can you add a check in here to ensure no C triangles?
+   }
+   
+   private String compressIsland( int initialVertex, int finalVertex )
+   {
+     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+     {
+       print("Compressing island. Local vertex start " + m_islandVertexNumber.get(initialVertex) + " Local vertex end " + m_islandVertexNumber.get(finalVertex) + "\n");
+     }
+     Stack<STypeTriangleState> sState = new Stack<STypeTriangleState>();
+     StringBuilder clersString = new StringBuilder();
+     
+     int currentCorner1 = findBeachEdgeCornerForVertex( initialVertex, finalVertex );
+     if ( v(n(currentCorner1)) == finalVertex )
+     {
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
+       {
+         print("CompressIsland - incorrect order of sending of initialVertex and the finalVertex ");
+       }
+     }
+     
+     int currentCorner2 = p(currentCorner1);
+     int cornerOther = n(currentCorner1);
+     boolean endCompress = false;
+     while ( !endCompress )
+     {
+       cornerOther = n(currentCorner1);
+       char ch = getCharForIslandTriangle( v(cornerOther), v(currentCorner1), v(currentCorner2) );
+       
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
+       {
+         print("Vertices for compression are " + v(cornerOther) + " " + v(currentCorner1) + " " + v(currentCorner2) + " Char ch is " + ch + "\n");
+       }
+       switch( ch )
+       {
+         case 'l': currentCorner1 = u(cornerOther);
+                   currentCorner2 = s(currentCorner2);
+                   break;
+         case 'r': currentCorner1 = u(currentCorner1);
+                   currentCorner2 = s(cornerOther);
+                   break;
+         case 's': {
+                     int otherCorner1 = u(cornerOther);
+                     int otherCorner2 = s(currentCorner2);
+                     currentCorner1 = u(currentCorner1);
+                     currentCorner2 = s(cornerOther);
+                     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+                     {
+                       print("Pushed state " + v(otherCorner1) + " " + v(otherCorner2) + "\n");
+                     }
+                     STypeTriangleState state = new STypeTriangleState( otherCorner1, otherCorner2 );
+                     sState.push(state);
+                   }
+                   break;
+         case 'e': if ( sState.isEmpty() )
+                   {
+                     endCompress = true;
+                   }
+                   else
+                   {
+                     STypeTriangleState state = sState.pop();
+                     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+                     {
+                       print("Popped state " + state.corner1() + " " + state.corner2() +"\n");
+                     }
+                     currentCorner1 = state.corner1();
+                     currentCorner2 = state.corner2();
+                   }
+                   break;
+       }
+       clersString.append(ch);
+     }
+     return clersString.toString();
+   }
+   
+   //Given three vertices (in the island mesh), belonging to a single lagoon triangle, find out the CLERS type of that triangle
+   char getCharForLagoonTriangleWithCorners( int cornerOther, int c1, int c2 )
+   {
+     if ( isLagoonTriangleForCorner( r(cornerOther ) ) && isLagoonTriangleForCorner( l(cornerOther ) ) )
+     {
+       return 's';
+     }
+     else if ( isLagoonTriangleForCorner( r(cornerOther) ) )
+     {
+       return 'l';
+     }
+     else if ( isLagoonTriangleForCorner( l(cornerOther) ) )
+     {
+       return 'r';
+     }
+     return 'e'; //TODO msati3: can you add a check in here to ensure no C triangles?
+   }
+
+   //Given two corners forming the gate of the lagoon, create clers string for the lagoon
+   private String compressIslandLagoon( int corner1, int corner2 )
+   {
+     Stack<STypeTriangleState> sState = new Stack<STypeTriangleState>();
+
+     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+     {
+       print("Compress island lagoon called for " + m_islandVertexNumber.get( v(corner1) ) + " " + m_islandVertexNumber.get( v(corner2) ) + " " + corner1 + " " + corner2 + "\n");
+     }
+
+     StringBuilder clersString = new StringBuilder();
     
+     int currentCorner1 = corner1;
+     int currentCorner2 = corner2;
+     
+     if ( p(currentCorner1) == currentCorner2 )
+     {
+       if ( DEBUG && DEBUG_MODE >= LOW )
+       {
+         print("Compress Island Lagoon: next current corner != corner2!!\n");
+       }
+     }
+     int cornerOther = p(currentCorner1);
+     boolean endCompress = false;
+     while ( !endCompress )
+     {
+       cornerOther = p(currentCorner1);
+       char ch = getCharForLagoonTriangleWithCorners( cornerOther, currentCorner1, currentCorner2 );
+       
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
+       {
+         print("Vertices for compression are " + v(cornerOther) + " " + v(currentCorner1) + " " + v(currentCorner2) + " Char ch is " + ch + "\n");
+       }
+       switch( ch )
+       {
+         case 'l': currentCorner1 = s(currentCorner1);
+                   currentCorner2 = u(cornerOther);
+                   break;
+         case 'r': currentCorner1 = s(cornerOther);
+                   currentCorner2 = u(currentCorner2);
+                   break;
+         case 's': {
+                     int otherCorner1 = s(cornerOther);
+                     int otherCorner2 = u(currentCorner2);
+                     currentCorner1 = s(currentCorner1);
+                     currentCorner2 = u(cornerOther);
+                     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+                     {
+                       print("Pushed state " + v(otherCorner1) + " " + v(otherCorner2) + "\n");
+                     }
+                     STypeTriangleState state = new STypeTriangleState( otherCorner1, otherCorner2 );
+                     sState.push(state);
+                   }
+                   break;
+         case 'e': if ( sState.isEmpty() )
+                   {
+                     endCompress = true;
+                   }
+                   else
+                   {
+                     STypeTriangleState state = sState.pop();
+                     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+                     {
+                       print("Popped state " + state.corner1() + " " + state.corner2() +"\n");
+                     }
+                     currentCorner1 = state.corner1();
+                     currentCorner2 = state.corner2();
+                   }
+                   break;
+       }
+       clersString.append(ch);
+     }
+     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+     {
+       print("The CLERS string for the lagoon is " + clersString + "\n");
+     }
+     return clersString.toString();  
+   }
+   
+   //Given an island number, compresses the lagoons in the island, adding them to the expansion stream for the island, using CLERS encoding
+   private void compressIslandLagoons( int island )
+   {
+       /*if (island != 8)
+       {
+         return;
+       }*/
+       int v = m_vertexForIsland.get(island);
+
+       IslandExpansionStream islandStream = m_islandExpansionManager.getStream( island );
+
+       if ( isIslandVertex( v ) )
+       {   
+         int currentVOnIsland = v;
+         int prevVOnIsland = v;
+         int prevPrevVOnIsland = v;
+         int returnedVertex = -1;
+         
+         int currentVertexNumber = 0;
+         int nextVertexNumber = 0;
+
+         do
+         {
+           returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
+           int corner = -1;
+           if ( returnedVertex != -1 )
+           {
+             corner = findBeachEdgeCornerForVertex( returnedVertex, currentVOnIsland );
+           }
+           else
+           {
+             corner = findBeachEdgeCornerForVertex( v, currentVOnIsland );
+           }
+
+           int currentCorner = s(corner);
+           while ( currentCorner != corner ) //Swing around the current corner, to get a lagoon triangle
+           {
+             //If not a consecutive vertex, but still an island vertex => lagoon triangle. Should be going forward
+             if ( isLagoonTriangleForCorner( currentCorner ) && (v(n(currentCorner)) != currentVOnIsland) ) /* && ( m_islandVertexNumber.get((v(n(currentCorner)))) != ( (m_islandVertexNumber.get((v(currentCorner))) + 1) % VERTICES_PER_ISLAND ) ) ) */
+             {
+               if ( !isLagoonTriangleForCorner(u(currentCorner)) && ! isLagoonTriangleForCorner(s(n(currentCorner))) ) //If this is the starting lagoon triangle
+               {
+                 String clersString = compressIslandLagoon( currentCorner, n(currentCorner) );
+                 LagoonExpansionStream lagoonStream = islandStream.addLagoonExpansionStream();
+                 lagoonStream.setVertices( m_islandVertexNumber.get((v(currentCorner))), m_islandVertexNumber.get((v(n(currentCorner)))) );
+                 lagoonStream.setClersString(clersString);
+               }
+             }
+             currentCorner = s(currentCorner);
+           }
+
+           prevPrevVOnIsland = prevVOnIsland;
+           prevVOnIsland = currentVOnIsland;
+           currentVOnIsland = returnedVertex;
+         } while ( returnedVertex != -1 );        
+       }
+       else //!isIslandVertex - waterVertex
+       { 
+         if ( DEBUG && DEBUG_MODE >= LOW )
+         {
+           print("Compress Island Lagoons - Should not be called for water vertex!! \n");
+         }
+       }
+   }
+       
    private void addOppositeForUnusedIsland( int bc2, int bc3, int btrackedc2, int btrackedc3, int nextUsedIsland, ArrayList<Boolean> triangleStrip )
    {
      if ( m_numAdvances != -1 && m_currentAdvances == m_numAdvances-1 )

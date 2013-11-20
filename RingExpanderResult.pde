@@ -1,5 +1,6 @@
 int ISLAND_SIZE = 5;
 int MAX_ISLANDS = 40000;
+int VERTICES_PER_ISLAND = ISLAND_SIZE + 2;
 
 int numIslands = 0; //TODO msati3: Move this inside islandMesh
 StepWiseRingExpander g_stepWiseRingExpander = new StepWiseRingExpander();

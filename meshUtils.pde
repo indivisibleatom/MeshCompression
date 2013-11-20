@@ -166,7 +166,7 @@ class IslandMeshUserInputHandler extends MeshUserInputHandler
   {
     switch( command.charAt(0) )
     {
-      case 'i': m_mesh.selectIsland(getNumberFromCommand(command, 1));
+      case 'z': m_mesh.selectIsland(getNumberFromCommand(command, 1));
         break;
       case 'c': m_mesh.cc = getNumberFromCommand(command, 1);
         break;
