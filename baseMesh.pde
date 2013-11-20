@@ -145,27 +145,28 @@ class BaseMesh extends Mesh
   }
   
   //Adds a triangle in mesh, with vertices offset by base offset
-  private void addTriangleWithOffset(int baseOffset, int v1, int v2, int v3)
+  private void addTriangleWithOffset(int baseOffset, int v1, int v2, int v3, int type)
   {
-    if (DEBUG && DEBUG_MODE >= LOW)
+    if (DEBUG && DEBUG_MODE >= VERBOSE)
     {
       print("Adding triangle withoffset " + (baseOffset + v1) + " " + (baseOffset + v2) + " " + (baseOffset + v3) + "\n");
     }
     addTriangle( baseOffset + v1, baseOffset + v2, baseOffset + v3 );
+    tm[nt-1] = type;
   }
   
   private int getNext( int v )
   {
-    return v+1;
+    return (v+1)%VERTICES_PER_ISLAND;
   }
   
   private int getPrev( int v )
   {
-    return v-1;
+    return (VERTICES_PER_ISLAND+v-1)%VERTICES_PER_ISLAND;
   }
   
   //Uses the clers string of island expansion to add to the V table of the base mesh, from the base offset
-  private void decompressConnectivity( String clersString, int baseOffset )
+  private void decompressConnectivityForIsland( String clersString, int baseOffset )
   {
     //Preprocess
     Stack<SOffsetState> sOffsetState = new Stack<SOffsetState>();
@@ -200,7 +201,7 @@ class BaseMesh extends Mesh
                     {
                       if ( DEBUG && DEBUG_MODE >= LOW )
                       {
-                        print("Decompress connectivity - negative d without ending of clers string!!\n");
+                        print("Decompress connectivity for island - negative d without ending of clers string!!\n");
                       }
                     }
                   }
@@ -225,24 +226,24 @@ class BaseMesh extends Mesh
       char ch = clersString.charAt(i);    
       if ( DEBUG && DEBUG_MODE >= VERBOSE )
       {
-        print("Decompress connectivity - clers character " + ch + "\n");
+        print("Decompress connectivity for island - clers character " + ch + "\n");
       }
       switch (ch)
       {
-        case 'l': addTriangleWithOffset( baseOffset, currentV1, getNext(currentV1), currentV2 );
+        case 'l': addTriangleWithOffset( baseOffset, currentV1, getNext(currentV1), currentV2, ISLAND );
                   currentV1 = getNext(currentV1); 
                   break;
-        case 'r': addTriangleWithOffset( baseOffset, currentV1, getPrev(currentV2), currentV2 );
+        case 'r': addTriangleWithOffset( baseOffset, currentV1, getPrev(currentV2), currentV2, ISLAND );
                   currentV2 = getPrev(currentV2);
                   break;
-        case 'e': addTriangleWithOffset( baseOffset, currentV1, getNext(currentV1), currentV2 );
+        case 'e': addTriangleWithOffset( baseOffset, currentV1, getNext(currentV1), currentV2, ISLAND );
                   if ( sState.isEmpty() )
                   {
                     if ( i != clersString.length() - 1 )
                     {
                       if ( DEBUG && DEBUG_MODE >= LOW )
                       {
-                        print("Decompress connectivity - e encountered when the s stack is empty!!\n");
+                        print("Decompress connectivity for island - e encountered when the s stack is empty!!\n");
                       }
                     }
                   }
@@ -253,8 +254,11 @@ class BaseMesh extends Mesh
                     currentV2 = state.v2();
                   }
                   break;                    
-        case 's': int offset = sOffsets[s];
-                  addTriangleWithOffset( baseOffset, currentV1, currentV1 + offset + 1, currentV2);
+        case 's': //First L and then R
+                  int offset = sOffsets[s];
+                  s++;
+                  print("Offset " + offset + "\n");
+                  addTriangleWithOffset( baseOffset, currentV1, currentV1 + offset + 1, currentV2, ISLAND );
                   int otherV1 = currentV1 + offset + 1;
                   int otherV2 = currentV2;
                   currentV2 = currentV1 + offset + 1;
@@ -264,17 +268,128 @@ class BaseMesh extends Mesh
     }
   }
   
+    //Uses the clers string of lagoon expansion to add to the V table of the base mesh, from the base offset
+  private void decompressConnectivityForLagoon( int vertex1, int vertex2, String clersString, int baseOffset )
+  {
+    //Preprocess
+    Stack<SOffsetState> sOffsetState = new Stack<SOffsetState>();
+
+    int[] sOffsets = new int[VERTICES_PER_ISLAND];
+    for (int i = 0; i < VERTICES_PER_ISLAND; i++)
+    {
+      sOffsets[i] = -1;
+    }
+
+    int e = 0;
+    int s = 0;
+    int d = 0;
+    for (int i = 0; i < clersString.length(); i++)
+    {
+      char ch = clersString.charAt(i);
+      switch (ch)
+      {
+        case 's': e-=1;
+                  sOffsetState.push(new SOffsetState(e,s));
+                  s+=1;
+                  d+=1;
+                  break;
+        case 'l':
+        case 'r': e+=1;
+                  break;
+        case 'e': e+=3;
+                  d-=1;
+                  if ( d < 0 )
+                  {
+                    if ( i != clersString.length() - 1 )
+                    {
+                      if ( DEBUG && DEBUG_MODE >= LOW )
+                      {
+                        print("Decompress connectivity for lagoon - negative d without ending of clers string!!\n");
+                      }
+                    }
+                  }
+                  else
+                  {
+                    SOffsetState state = sOffsetState.pop();
+                    sOffsets[state.s()] = e - state.e() - 2;
+                  }
+                  break;
+      }
+    }
+    
+    //Generate
+    int currentV1 = vertex1;
+    int currentV2 = vertex2;
+    int currentVOther = -1;
+    Stack<STypeTriangleStateV> sState = new Stack<STypeTriangleStateV>();
+    s = 0;
+    
+    for (int i = 0; i < clersString.length(); i++)
+    {
+      char ch = clersString.charAt(i);    
+      if ( DEBUG && DEBUG_MODE >= LOW )
+      {
+        print("Decompress connectivity for lagoon - clers character " + ch + "\n");
+      }
+      switch (ch)
+      {
+        case 'l': addTriangleWithOffset( baseOffset, currentV1, currentV2, getPrev(currentV2), LAGOON );
+                  currentV2 = getPrev(currentV2); 
+                  break;
+        case 'r': addTriangleWithOffset( baseOffset, currentV1, currentV2, getNext(currentV1), LAGOON );
+                  currentV1 = getNext(currentV1);
+                  break;
+        case 'e': addTriangleWithOffset( baseOffset, currentV1, currentV2, getPrev(currentV2), LAGOON );
+                  if ( sState.isEmpty() )
+                  {
+                    if ( i != clersString.length() - 1 )
+                    {
+                      if ( DEBUG && DEBUG_MODE >= LOW )
+                      {
+                        print("Decompress connectivity for lagoon - e encountered when the s stack is empty!!\n");
+                      }
+                    }
+                  }
+                  else
+                  {
+                    STypeTriangleStateV state = sState.pop();
+                    currentV1 = state.v1();
+                    currentV2 = state.v2();
+                  }
+                  break;                    
+        case 's': //First R and then L
+                  int offset = sOffsets[s];
+                  s++;
+                  addTriangleWithOffset( baseOffset, currentV1, currentV2, (currentV1 + offset + 1) % VERTICES_PER_ISLAND, LAGOON );
+                  int otherV1 = (currentV1 + offset + 1) % VERTICES_PER_ISLAND;
+                  int otherV2 = currentV2;
+                  currentV2 = (currentV1 + offset + 1) % VERTICES_PER_ISLAND;
+                  sState.push( new STypeTriangleStateV( otherV1, otherV2 ) );
+                  break;
+      }
+    }
+  }
+  
   private int addIslandGeometry( int islandNumber )
   {
     m_expansionIndex[ islandNumber ] = nv;
-    pt[] geometry = m_expansionManager.getStream( islandNumber ).getG();
+    IslandExpansionStream islandExpansionStream = m_expansionManager.getStream( islandNumber );
+    pt[] geometry = islandExpansionStream.getG();
     String clersString = m_expansionManager.getStream( islandNumber ).getClersString();
     for (int i = 0; i < geometry.length; i++)
     {
       addVertex( geometry[i] );
     }
     
-    decompressConnectivity( clersString, m_expansionIndex[ islandNumber ] );
+    decompressConnectivityForIsland( clersString, m_expansionIndex[ islandNumber ] );
+    ArrayList<LagoonExpansionStream> lagoonExpansionStreamList = islandExpansionStream.getLagoonExpansionStreamList();
+    for (int i = 0; i < lagoonExpansionStreamList.size(); i++)
+    {
+      int v1 = lagoonExpansionStreamList.get(i).vertex1();
+      int v2 = lagoonExpansionStreamList.get(i).vertex2();
+      clersString = lagoonExpansionStreamList.get(i).getClersString();
+      decompressConnectivityForLagoon( v1, v2, clersString, m_expansionIndex[ islandNumber ] );
+    }
     
     return geometry.length;
   }
@@ -315,7 +430,7 @@ class BaseMesh extends Mesh
           int initCorner = getCorrectCorner(cc);
           int currentCorner = initCorner;
           int nextS = -1;
-          do
+          /*do
           {
             nextS = s( currentCorner );
             if ( v(p(currentCorner)) < numIslands ) //The other island forming the straits is not a water vertex
@@ -390,7 +505,7 @@ class BaseMesh extends Mesh
             {
             }
             currentCorner = nextS;
-          } while (currentCorner != initCorner);
+          } while (currentCorner != initCorner);*/
         }
       }
     }

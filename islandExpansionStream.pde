@@ -31,6 +31,11 @@ class IslandExpansionStream
     return lagoonStream;
   }
   
+  ArrayList<LagoonExpansionStream> getLagoonExpansionStreamList()
+  {
+    return m_lagoonStreams;
+  }
+  
   pt[] getG()
   {
     return m_G;

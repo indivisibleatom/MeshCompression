@@ -1451,6 +1451,7 @@ class IslandMesh extends Mesh
                    currentCorner2 = s(cornerOther);
                    break;
          case 's': {
+                     //First L and then R
                      int otherCorner1 = u(cornerOther);
                      int otherCorner2 = s(currentCorner2);
                      currentCorner1 = u(currentCorner1);
@@ -1544,6 +1545,7 @@ class IslandMesh extends Mesh
                    currentCorner2 = u(currentCorner2);
                    break;
          case 's': {
+                     //First R and then L. TODO msati3: Fix this discrepancy b/w lagoon expansion and island expansion?
                      int otherCorner1 = s(cornerOther);
                      int otherCorner2 = u(currentCorner2);
                      currentCorner1 = s(currentCorner1);

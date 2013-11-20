@@ -19,4 +19,12 @@ class LagoonExpansionStream
   {
     m_clersString = clersString;
   }
+  
+  String getClersString()
+  {
+    return m_clersString;
+  }
+  
+  int vertex1() { return m_vertex1; }
+  int vertex2() { return m_vertex2; }
 }
