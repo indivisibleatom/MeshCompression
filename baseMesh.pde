@@ -430,7 +430,7 @@ class BaseMesh extends Mesh
           int initCorner = getCorrectCorner(cc);
           int currentCorner = initCorner;
           int nextS = -1;
-          /*do
+          do
           {
             nextS = s( currentCorner );
             if ( v(p(currentCorner)) < numIslands ) //The other island forming the straits is not a water vertex
@@ -505,7 +505,7 @@ class BaseMesh extends Mesh
             {
             }
             currentCorner = nextS;
-          } while (currentCorner != initCorner);*/
+          } while (currentCorner != initCorner);
         }
       }
     }
