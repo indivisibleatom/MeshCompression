@@ -1709,7 +1709,7 @@ class IslandMesh extends Mesh
          }
          ChannelExpansion channelExpansion = new ChannelExpansion( triangleStrip );
          baseMesh.m_triangleStrips[ corner1 ] = channelExpansion;
-         baseMesh.m_triangleStrips[ corner2 ] = channelExpansion;
+         baseMesh.m_triangleStrips[ corner2 ] = channelExpansion.reverse();
        }
        else
        {

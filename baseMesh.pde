@@ -38,6 +38,17 @@ class ChannelExpansion
     m_expansion = expansion;
   }
   
+  ChannelExpansion reverse()
+  {
+    ArrayList<Boolean> rev = new ArrayList<Boolean>();
+    for (int i = m_expansion.size() - 1; i >= 0; i--)
+    {
+      rev.add( m_expansion.get(i) );
+    }
+    ChannelExpansion newExpansion = new ChannelExpansion( rev );
+    return newExpansion;
+  }
+  
   ArrayList<Boolean> expansion() { return m_expansion; }
   
   private ArrayList<Boolean> m_expansion;
@@ -83,6 +94,7 @@ class BaseMesh extends Mesh
     }
   }
   
+  //Fetchers for connectivity in the base mesh
   private int swingBase( int corner )
   {
     if ( m_shiftedOpposites[n(corner)] != -1 )
@@ -92,6 +104,18 @@ class BaseMesh extends Mesh
     else
     {
       return s(corner);
+    }
+  }
+  
+  private int unswingBase( int corner )
+  {
+    if ( m_shiftedOpposites[p(corner)] != -1 )
+    {
+      return p(m_shiftedOpposites[p(corner)]);
+    }
+    else
+    {
+      return u(corner);
     }
   }
   
@@ -580,51 +604,25 @@ class BaseMesh extends Mesh
 
                 walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner );
               }
-              
               else //The other island has been expanded. Fetch the expansion from the corner
               {
-                /*if ( m_shiftedCorners[currentCorner] == -1 )
-                {
-                  visible[t(currentCorner)] = false;
-                }
-                else
-                {
-                  visible[t(m_shiftedCorners[currentCorner])] = false;
-                }
-                if ( m_shiftedCorners[currentCorner] == -1 )
-                {
-                  addTriangle( m_expansionIndex[vertexNumber] + m_hooks[currentCorner], v(n(currentCorner)), v(p(currentCorner)) );
-                  m_shiftedCorners[currentCorner] = nc - 3;
-                  m_shiftedCorners[n(currentCorner)] = nc - 2;
-                  m_shiftedCorners[p(currentCorner)] = nc - 1;
-                  tm[t(m_shiftedCorners[currentCorner])] = tm[t(currentCorner)];
-                }
-                else
-                {
-                  addTriangle( m_expansionIndex[vertexNumber] + m_hooks[currentCorner], v(n(m_shiftedCorners[currentCorner])), v(p(m_shiftedCorners[currentCorner])) );
-                  m_shiftedCorners[currentCorner] = nc - 3;
-                  m_shiftedCorners[n(currentCorner)] = nc - 2;
-                  m_shiftedCorners[p(currentCorner)] = nc - 1;
-                  tm[t(m_shiftedCorners[currentCorner])] = tm[t(currentCorner)];
-                }
+                adjustOppositesOnExpansion( currentCorner );
+                V[currentCorner] = m_expansionIndex[vertexNumber] + m_hooks[currentCorner]; //Set the vertex of the junction triangle to the expansion island's hook vertex                
 
                 ArrayList<Boolean> triangleStripList = m_triangleStrips[ n(currentCorner) ].expansion();
                 boolean flip = false;
-                if ( v(p(currentCorner)) > v(currentCorner ) ) //If the current island number is less than the other island number, no need to invert triangle strip
+                if ( baseV(p(currentCorner)) > baseV(currentCorner ) ) //If the current island number is less than the other island number, no need to invert triangle strip
                 {
                   flip = true;
                 }
-                walkAndExpandBoth( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, maxVertexNum, m_hooks[p(currentCorner)], m_hooks[u(p(currentCorner))], v(p(currentCorner)), triangleStripList, flip );*/
+                walkAndExpandBoth( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, maxVertexNum, m_hooks[p(currentCorner)], m_hooks[unswingBase(p(currentCorner))], baseV(p(currentCorner)), triangleStripList, flip, currentCorner );
               }
             }
-            else if ( v(p(currentCorner)) >= numIslands && v(p(currentCorner)) < m_initSize) //Water vertex in base mesh. TODO msati3: Get the condition correct. Correct code
+            else if ( v(p(currentCorner)) >= numIslands && v(p(currentCorner)) < m_initSize) //water vertex
             {
-              /*addTriangle( m_expansionIndex[vertexNumber] + m_hooks[currentCorner], v(n(currentCorner)), v(p(currentCorner)) );
-              tm[nt-1] = tm[t(currentCorner)];
-              m_shiftedCorners[currentCorner] = nc - 3;
-              m_shiftedCorners[n(currentCorner)] = nc - 2;
-              m_shiftedCorners[p(currentCorner)] = nc - 1;
-              walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum);*/
+              adjustOppositesOnExpansion( currentCorner );
+              V[currentCorner] = m_expansionIndex[vertexNumber] + m_hooks[currentCorner]; //Set the vertex of the junction triangle to the expansion island's hook vertex
+              walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner );
             }
             else
             {
@@ -673,7 +671,6 @@ class BaseMesh extends Mesh
                   V[currentCorner] = m_expansionIndex[vertexNumber] + m_hooks[currentCorner]; //Set the vertex of the junction triangle to the expansion island's hook vertex
                   if ( currentCorner != initCorner )
                   {
-                    print("Setting " + p(currentCorner) + " " + (3*nt-2) + "\n");
                     O[p(currentCorner)] = 3*nt - 2;
                     O[3*nt - 2] = p(currentCorner);
                   }
@@ -688,71 +685,40 @@ class BaseMesh extends Mesh
               }
               else //The other island has been expanded. Fetch the expansion from the corner
               {
-                /*if ( m_beachEdgesExpanded == m_beachEdgesToExpand )
-                {
-                  if ( m_shiftedCorners[currentCorner] == -1 )
-                  {
-                    visible[t(currentCorner)] = false;
-                  }
-                  else
-                  {
-                    visible[t(m_shiftedCorners[currentCorner])] = false;
-                  }
-                }
-                m_beachEdgesExpanded++;
                 if ( m_beachEdgesExpanded == m_beachEdgesToExpand )
                 {
-                  if ( m_shiftedCorners[currentCorner] == -1 )
-                  {
-                    addTriangle( m_expansionIndex[vertexNumber] + m_hooks[currentCorner], v(n(currentCorner)), v(p(currentCorner)) );
-                    m_shiftedCorners[currentCorner] = nc - 3;
-                    m_shiftedCorners[n(currentCorner)] = nc - 2;
-                    m_shiftedCorners[p(currentCorner)] = nc - 1;
-                    tm[t(m_shiftedCorners[currentCorner])] = tm[t(currentCorner)];
-                  }
-                  else
-                  {
-                    addTriangle( m_expansionIndex[vertexNumber] + m_hooks[currentCorner], v(n(m_shiftedCorners[currentCorner])), v(p(m_shiftedCorners[currentCorner])) );
-                    m_shiftedCorners[currentCorner] = nc - 3;
-                    m_shiftedCorners[n(currentCorner)] = nc - 2;
-                    m_shiftedCorners[p(currentCorner)] = nc - 1;
-                    tm[t(m_shiftedCorners[currentCorner])] = tm[t(currentCorner)];
-                  }
+                  adjustOppositesOnExpansion( currentCorner );
+                  V[currentCorner] = m_expansionIndex[vertexNumber] + m_hooks[currentCorner]; //Set the vertex of the junction triangle to the expansion island's hook vertex                
                 }
                 m_beachEdgesExpanded++;
 
                 ArrayList<Boolean> triangleStripList = m_triangleStrips[ n(currentCorner) ].expansion();
                 boolean flip = false;
-                if ( v(p(currentCorner)) > v(currentCorner ) ) //If the current island number is less than the other island number, no need to invert triangle strip
+                if ( baseV(p(currentCorner)) > baseV(currentCorner ) ) //If the current island number is less than the other island number, no need to invert triangle strip
                 {
                   flip = true;
                 }
-                walkAndExpandBoth( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, maxVertexNum, m_hooks[p(currentCorner)], m_hooks[u(p(currentCorner))], v(p(currentCorner)), triangleStripList, flip );*/
+                walkAndExpandBoth( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, maxVertexNum, m_hooks[p(currentCorner)], m_hooks[unswingBase(p(currentCorner))], baseV(p(currentCorner)), triangleStripList, flip, currentCorner );
               }
             }
             else if ( v(p(currentCorner)) >= numIslands && v(p(currentCorner)) < m_initSize) //Water vertex in base mesh. TODO msati3: Get the condition correct
             {
-              /*if ( m_beachEdgesExpanded == m_beachEdgesToExpand )
-              {
-                visible[t(currentCorner)] = false;                
-              }
-              m_beachEdgesExpanded++;
               if ( m_beachEdgesExpanded == m_beachEdgesToExpand )
               {
-                addTriangle( m_expansionIndex[vertexNumber] + m_hooks[currentCorner], v(n(currentCorner)), v(p(currentCorner)) );
-                tm[nt-1] = tm[t(currentCorner)];
+                adjustOppositesOnExpansion( currentCorner );
+                V[currentCorner] = m_expansionIndex[vertexNumber] + m_hooks[currentCorner]; //Set the vertex of the junction triangle to the expansion island's hook vertex
               }
               m_beachEdgesExpanded++;
               if ( m_beachEdgesToExpand == m_beachEdgesExpanded )
               {
                 print("Walk and expand " + m_hooks[currentCorner] + " " + m_hooks[nextS] + " " + vertexNumber + " " + v(p(currentCorner)) + " " + maxVertexNum + "\n");
               }
-              walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum);
+              walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner);
               if ( m_beachEdgesExpanded > m_beachEdgesToExpand )
               {
                 m_beachEdgesToExpand++;
                 return;
-              }*/
+              }
             }
             else
             {
@@ -854,10 +820,14 @@ class BaseMesh extends Mesh
     cc=swingBase(cc); 
   }
   
-  private void walkAndExpandBoth( int startHook, int endHook, int currentIsland, int maxVertexNum, int startHookOther, int endHookOther, int nextIsland, ArrayList<Boolean> triangleStripList, boolean flip )
+  private void walkAndExpandBoth( int startHook, int endHook, int currentIsland, int maxVertexNum, int startHookOther, int endHookOther, int nextIsland, ArrayList<Boolean> triangleStripList, boolean flip, int currentCorner )
   {
     int currentVertexOffset1 = startHook;
     int currentVertexOffset2 = startHookOther;
+    
+    // track the current corner on the fan. Each time no progress on self strip, change the vertex of the corner appropriately. Else, increase the vertex number on the
+    int currentCornerOnFan = currentCorner;
+    
     for (int i = 0; i < triangleStripList.size(); i++)
     {
       if ( m_beachEdgesToExpand != -1 && m_beachEdgesToExpand < m_beachEdgesExpanded )
@@ -875,19 +845,19 @@ class BaseMesh extends Mesh
       {
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
-          addTriangle( m_expansionIndex[currentIsland] + ((currentVertexOffset1 + 1) % maxVertexNum), m_expansionIndex[currentIsland] + (currentVertexOffset1%maxVertexNum), m_expansionIndex[nextIsland] + (currentVertexOffset2 % maxVertexNum) );
+          addTriangle( m_expansionIndex[currentIsland] + ((currentVertexOffset1 + 1) % maxVertexNum), m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
           tm[nt-1] = CHANNEL;
         }
-        currentVertexOffset1++;
+        currentVertexOffset1 = (currentVertexOffset1 + 1) % maxVertexNum;
       }
       else
       {
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
-          addTriangle( m_expansionIndex[currentIsland] + (currentVertexOffset1 % maxVertexNum), m_expansionIndex[nextIsland] + (currentVertexOffset2%maxVertexNum), m_expansionIndex[nextIsland] + ((currentVertexOffset2 - 1)%maxVertexNum) );
-          tm[nt-1] = CHANNEL;
+          currentCornerOnFan = s(currentCornerOnFan);
+          V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
         }
-        currentVertexOffset2++;
+        currentVertexOffset2 = (maxVertexNum + currentVertexOffset2 - 1) % maxVertexNum;
       }
       m_beachEdgesExpanded++;
     }
