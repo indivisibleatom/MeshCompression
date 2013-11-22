@@ -2,15 +2,18 @@ class STypeTriangleStateV
 {
   private int m_v1;
   private int m_v2;
+  int m_oppositeCornerOther;
   
-  public STypeTriangleStateV( int v1, int v2 )
+  public STypeTriangleStateV( int v1, int v2, int oppositeCornerOther )
   {
     m_v1 = v1;
     m_v2 = v2;
+    m_oppositeCornerOther = oppositeCornerOther;
   }
   
   public int v1() { return m_v1; }
   public int v2() { return m_v2; }
+  public int oppositeCornerOther() { return m_oppositeCornerOther; }
 }
 
 class SOffsetState
@@ -165,6 +168,83 @@ class BaseMesh extends Mesh
     return (VERTICES_PER_ISLAND+v-1)%VERTICES_PER_ISLAND;
   }
   
+  //Update the opposite corner being tracked, and set the opposite corner for the newly added triangle
+  private int setOppositeCornerAndUpdate( int oppositeCornerLast, char triangleType )
+  {
+    switch( triangleType )
+    {
+      case 'l': if ( oppositeCornerLast != -1 )
+                {
+                  O[oppositeCornerLast] = 3*nt - 2;
+                  O[3*nt - 2] = oppositeCornerLast;
+                }
+                oppositeCornerLast = 3*nt - 3;
+                break;
+      case 'r': if ( oppositeCornerLast != -1 )
+                {
+                  O[oppositeCornerLast] = 3*nt - 2;
+                  O[3*nt - 2] = oppositeCornerLast;
+                }
+                oppositeCornerLast = 3*nt - 1;
+                break;
+      case 's': if ( oppositeCornerLast != -1 )
+                {
+                  O[oppositeCornerLast] = 3*nt - 2;
+                  O[3*nt - 2] = oppositeCornerLast;
+                }
+                oppositeCornerLast = 3*nt - 1;
+                break;
+      case 'e': if ( oppositeCornerLast == -1 )
+                {
+                  if ( DEBUG && DEBUG_MODE >= LOW )
+                  {
+                    print("Set opposite corner and update - oppositeCornerLast is -1 for an E triangle!!\n");
+                  }
+                }
+                O[oppositeCornerLast] = 3*nt - 2;
+                O[3*nt-2] = oppositeCornerLast;
+                oppositeCornerLast = -1;
+                break;
+    }
+    return oppositeCornerLast;
+  }
+  
+  private int setOppositeCornerLagoonAndUpdate( int oppositeCornerLast, char triangleType )
+  {
+    switch( triangleType )
+    {
+      case 'l': if ( oppositeCornerLast != -1 )
+                {
+                  O[oppositeCornerLast] = 3*nt - 1;
+                  O[3*nt - 1] = oppositeCornerLast;
+                }
+                oppositeCornerLast = 3*nt - 2;
+                break;
+      case 'r': if ( oppositeCornerLast != -1 )
+                {
+                  O[oppositeCornerLast] = 3*nt - 1;
+                  O[3*nt - 1] = oppositeCornerLast;
+                }
+                oppositeCornerLast = 3*nt - 3;
+                break;
+      case 's': if ( oppositeCornerLast != -1 )
+                {
+                  O[oppositeCornerLast] = 3*nt - 1;
+                  O[3*nt - 1] = oppositeCornerLast;
+                }
+                oppositeCornerLast = 3*nt - 2;
+                break;
+      case 'e': if ( oppositeCornerLast != -1 )
+                {                
+                  O[oppositeCornerLast] = 3*nt - 1;
+                  O[3*nt-1] = oppositeCornerLast;
+                  oppositeCornerLast = -1;
+                }
+                break;
+    }
+    return oppositeCornerLast;
+  }
+  
   //Uses the clers string of island expansion to add to the V table of the base mesh, from the base offset
   private void decompressConnectivityForIsland( String clersString, int baseOffset )
   {
@@ -220,6 +300,7 @@ class BaseMesh extends Mesh
     int currentVOther = -1;
     Stack<STypeTriangleStateV> sState = new Stack<STypeTriangleStateV>();
     s = 0;
+    int oppositeCornerLast = -1;
     
     for (int i = 0; i < clersString.length(); i++)
     {
@@ -232,11 +313,14 @@ class BaseMesh extends Mesh
       {
         case 'l': addTriangleWithOffset( baseOffset, currentV1, getNext(currentV1), currentV2, ISLAND );
                   currentV1 = getNext(currentV1); 
+                  oppositeCornerLast = setOppositeCornerAndUpdate( oppositeCornerLast, ch );
                   break;
         case 'r': addTriangleWithOffset( baseOffset, currentV1, getPrev(currentV2), currentV2, ISLAND );
                   currentV2 = getPrev(currentV2);
+                  oppositeCornerLast = setOppositeCornerAndUpdate( oppositeCornerLast, ch );
                   break;
         case 'e': addTriangleWithOffset( baseOffset, currentV1, getNext(currentV1), currentV2, ISLAND );
+                  oppositeCornerLast = setOppositeCornerAndUpdate( oppositeCornerLast, ch );
                   if ( sState.isEmpty() )
                   {
                     if ( i != clersString.length() - 1 )
@@ -252,6 +336,7 @@ class BaseMesh extends Mesh
                     STypeTriangleStateV state = sState.pop();
                     currentV1 = state.v1();
                     currentV2 = state.v2();
+                    oppositeCornerLast = state.oppositeCornerOther();
                   }
                   break;                    
         case 's': //First L and then R
@@ -259,10 +344,12 @@ class BaseMesh extends Mesh
                   s++;
                   print("Offset " + offset + "\n");
                   addTriangleWithOffset( baseOffset, currentV1, currentV1 + offset + 1, currentV2, ISLAND );
+                  oppositeCornerLast = setOppositeCornerAndUpdate( oppositeCornerLast, ch );
                   int otherV1 = currentV1 + offset + 1;
                   int otherV2 = currentV2;
+                  int oppositeCornerOther = 3*nt - 3;
                   currentV2 = currentV1 + offset + 1;
-                  sState.push( new STypeTriangleStateV( otherV1, otherV2 ) );
+                  sState.push( new STypeTriangleStateV( otherV1, otherV2, oppositeCornerOther ) );
                   break;
       }
     }
@@ -323,6 +410,7 @@ class BaseMesh extends Mesh
     int currentVOther = -1;
     Stack<STypeTriangleStateV> sState = new Stack<STypeTriangleStateV>();
     s = 0;
+    int oppositeCornerLast = -1;
     
     for (int i = 0; i < clersString.length(); i++)
     {
@@ -334,12 +422,15 @@ class BaseMesh extends Mesh
       switch (ch)
       {
         case 'l': addTriangleWithOffset( baseOffset, currentV1, currentV2, getPrev(currentV2), LAGOON );
+                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch );
                   currentV2 = getPrev(currentV2); 
                   break;
         case 'r': addTriangleWithOffset( baseOffset, currentV1, currentV2, getNext(currentV1), LAGOON );
+                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch );
                   currentV1 = getNext(currentV1);
                   break;
         case 'e': addTriangleWithOffset( baseOffset, currentV1, currentV2, getPrev(currentV2), LAGOON );
+                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch );
                   if ( sState.isEmpty() )
                   {
                     if ( i != clersString.length() - 1 )
@@ -355,16 +446,20 @@ class BaseMesh extends Mesh
                     STypeTriangleStateV state = sState.pop();
                     currentV1 = state.v1();
                     currentV2 = state.v2();
+                    oppositeCornerLast = state.oppositeCornerOther();
                   }
                   break;                    
         case 's': //First R and then L
                   int offset = sOffsets[s];
                   s++;
                   addTriangleWithOffset( baseOffset, currentV1, currentV2, (currentV1 + offset + 1) % VERTICES_PER_ISLAND, LAGOON );
+                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch );
                   int otherV1 = (currentV1 + offset + 1) % VERTICES_PER_ISLAND;
                   int otherV2 = currentV2;
+                  int oppositeCornerOther = 3*nt - 3;
+                  print("Opposite corner other - " + oppositeCornerOther + "\n");
                   currentV2 = (currentV1 + offset + 1) % VERTICES_PER_ISLAND;
-                  sState.push( new STypeTriangleStateV( otherV1, otherV2 ) );
+                  sState.push( new STypeTriangleStateV( otherV1, otherV2, oppositeCornerOther ) ); 
                   break;
       }
     }
