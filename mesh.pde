@@ -928,7 +928,7 @@ class Mesh {
   void drawPostPicking()
   {       
     // -------------------------------------------------------- display picked points and triangles ----------------------------------   
-    fill(cyan); 
+    fill(163, 73, 164); 
     showSOT(); // shoes triangle t(cc) shrunken
     showcc();  // display corner markers: seed sc (green),  current cc (red)
 

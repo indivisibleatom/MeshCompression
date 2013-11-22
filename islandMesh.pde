@@ -1723,8 +1723,11 @@ class IslandMesh extends Mesh
          print("\n");
        }
 
-       baseMesh.cm[ corner1 ] = 2;
-       baseMesh.cm[ corner2 ] = 2;
+       if ( m_numAdvances != -1 )
+       {
+         baseMesh.cm[ corner1 ] = 2;
+         baseMesh.cm[ corner2 ] = 2;
+       }
      }
    }
       

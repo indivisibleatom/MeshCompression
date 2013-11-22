@@ -140,6 +140,9 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
     if(keyPressed&&key == 'G') {
       m_mesh.onStepWiseExpand();
     }
+    if(keyPressed&&key == 'C') {
+      m_mesh.onSwingBase();
+    }
   }
 }
 
