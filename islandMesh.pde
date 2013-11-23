@@ -1707,9 +1707,18 @@ class IslandMesh extends Mesh
              print (triangleStrip.get(i) + " ");
            }
          }
+         
+         if ( corner1 == 64 || corner2 == 64 )
+         {
+           print("Corners: " + corner1 + " " + corner2 + " Triangle strip for last added opposite: ");
+           for (int i = 0; i < triangleStrip.size(); i++ )
+           {
+             print (triangleStrip.get(i) + " ");
+           }          
+         }
          ChannelExpansion channelExpansion = new ChannelExpansion( triangleStrip );
-         baseMesh.m_triangleStrips[ corner1 ] = channelExpansion;
-         baseMesh.m_triangleStrips[ corner2 ] = channelExpansion.reverse();
+         baseMesh.m_triangleStrips[ corner2 ] = channelExpansion;
+         baseMesh.m_triangleStrips[ corner1 ] = channelExpansion.reverse();
        }
        else
        {
