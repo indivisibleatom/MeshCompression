@@ -261,8 +261,25 @@ class BaseMesh extends Mesh
     return oppositeCornerLast;
   }
   
-  private int setOppositeCornerLagoonAndUpdate( int oppositeCornerLast, char triangleType )
+  private int getHookFromVertexNumber( int vertexNumber, int baseOffset )
   {
+    int hookNumber = vertexNumber - baseOffset;
+    
+    if ( DEBUG && DEBUG_MODE >= LOW )
+    {
+      if ( hookNumber >= VERTICES_PER_ISLAND )
+      {
+        print ("getHookFromVertexNumber - the hook number that is determined is greater than the number of the vertices on an island!!");
+      }
+    }
+    
+    return hookNumber;
+  }
+  
+  private int setOppositeCornerLagoonAndUpdate( int oppositeCornerLast, char triangleType, int island )
+  {
+    int v1, v2, corner, opposite;
+    
     switch( triangleType )
     {
       case 'l': if ( oppositeCornerLast != -1 )
@@ -270,15 +287,35 @@ class BaseMesh extends Mesh
                   O[oppositeCornerLast] = 3*nt - 1;
                   O[3*nt - 1] = oppositeCornerLast;
                 }
+                
+                //Set the opposite for the island edge
+                v1 = getHookFromVertexNumber( V[3*nt-2], m_expansionIndex[island] );
+                v2 = getHookFromVertexNumber( V[3*nt-1], m_expansionIndex[island] );
+                corner = getCornerForHookPair( island, v2, v1 );
+                opposite = n(corner);               
+                O[3*nt - 3] = opposite;
+                O[opposite] = 3*nt - 3;
+
                 oppositeCornerLast = 3*nt - 2;
                 break;
+
       case 'r': if ( oppositeCornerLast != -1 )
                 {
                   O[oppositeCornerLast] = 3*nt - 1;
                   O[3*nt - 1] = oppositeCornerLast;
                 }
+
+                //Set the opposite for the island edge
+                v1 = getHookFromVertexNumber( V[3*nt-1], m_expansionIndex[island] );
+                v2 = getHookFromVertexNumber( V[3*nt-3], m_expansionIndex[island] );
+                corner = getCornerForHookPair( island, v2, v1 );
+                opposite = n(corner);               
+                O[3*nt - 2] = opposite;
+                O[opposite] = 3*nt - 2;
+
                 oppositeCornerLast = 3*nt - 3;
                 break;
+
       case 's': if ( oppositeCornerLast != -1 )
                 {
                   O[oppositeCornerLast] = 3*nt - 1;
@@ -286,12 +323,30 @@ class BaseMesh extends Mesh
                 }
                 oppositeCornerLast = 3*nt - 2;
                 break;
+
       case 'e': if ( oppositeCornerLast != -1 )
                 {                
                   O[oppositeCornerLast] = 3*nt - 1;
                   O[3*nt-1] = oppositeCornerLast;
                   oppositeCornerLast = -1;
                 }
+
+                //Set the opposite for the island edge
+                v1 = getHookFromVertexNumber( V[3*nt-2], m_expansionIndex[island] );
+                v2 = getHookFromVertexNumber( V[3*nt-1], m_expansionIndex[island] );
+                corner = getCornerForHookPair( island, v2, v1 );
+                print("Get corner for hook pair  " + v1 + " " + v2 + " " + corner + "\n");
+                opposite = n(corner);               
+                O[3*nt - 3] = opposite;
+                O[opposite] = 3*nt - 3;
+                print("Adding opposite for " + (3*nt-3) + " " + opposite + "\n");
+
+                v1 = getHookFromVertexNumber( V[3*nt-1], m_expansionIndex[island] );
+                v2 = getHookFromVertexNumber( V[3*nt-3], m_expansionIndex[island] );
+                corner = getCornerForHookPair( island, v2, v1 );                
+                opposite = n(corner);               
+                O[3*nt - 2] = opposite;
+                O[opposite] = 3*nt - 2;
                 break;
     }
     return oppositeCornerLast;
@@ -408,8 +463,9 @@ class BaseMesh extends Mesh
   }
   
     //Uses the clers string of lagoon expansion to add to the V table of the base mesh, from the base offset
-  private void decompressConnectivityForLagoon( int vertex1, int vertex2, String clersString, int baseOffset )
+  private void decompressConnectivityForLagoon( int vertex1, int vertex2, String clersString, int islandNumber )
   {
+    int baseOffset = m_expansionIndex[islandNumber];
     //Preprocess
     Stack<SOffsetState> sOffsetState = new Stack<SOffsetState>();
 
@@ -474,15 +530,15 @@ class BaseMesh extends Mesh
       switch (ch)
       {
         case 'l': addTriangleWithOffset( baseOffset, currentV1, currentV2, getPrev(currentV2), LAGOON );
-                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch );
+                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch, islandNumber );
                   currentV2 = getPrev(currentV2); 
                   break;
         case 'r': addTriangleWithOffset( baseOffset, currentV1, currentV2, getNext(currentV1), LAGOON );
-                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch );
+                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch, islandNumber );
                   currentV1 = getNext(currentV1);
                   break;
         case 'e': addTriangleWithOffset( baseOffset, currentV1, currentV2, getPrev(currentV2), LAGOON );
-                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch );
+                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch, islandNumber );
                   if ( sState.isEmpty() )
                   {
                     if ( i != clersString.length() - 1 )
@@ -505,7 +561,7 @@ class BaseMesh extends Mesh
                   int offset = sOffsets[s];
                   s++;
                   addTriangleWithOffset( baseOffset, currentV1, currentV2, (currentV1 + offset + 1) % VERTICES_PER_ISLAND, LAGOON );
-                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch );
+                  oppositeCornerLast = setOppositeCornerLagoonAndUpdate( oppositeCornerLast, ch, islandNumber );
                   int otherV1 = (currentV1 + offset + 1) % VERTICES_PER_ISLAND;
                   int otherV2 = currentV2;
                   int oppositeCornerOther = 3*nt - 3;
@@ -536,7 +592,7 @@ class BaseMesh extends Mesh
       int v1 = lagoonExpansionStreamList.get(i).vertex1();
       int v2 = lagoonExpansionStreamList.get(i).vertex2();
       clersString = lagoonExpansionStreamList.get(i).getClersString();
-      decompressConnectivityForLagoon( v1, v2, clersString, m_expansionIndex[ islandNumber ] );
+      decompressConnectivityForLagoon( v1, v2, clersString, islandNumber );
     }
     
     if ( geometry.length != VERTICES_PER_ISLAND )
@@ -768,25 +824,29 @@ class BaseMesh extends Mesh
     }
   }
   
+  //Returns the corner for the nexthook
   private int getCornerForHookPair( int currentIsland, int startHook, int nextHook )
   {
     int searchStartIndex = m_expansionIndexVTable[ currentIsland ];
     int currentCorner;
     int retVal = -1;
-    for (int i = searchStartIndex; i < (searchStartIndex + ISLAND_SIZE) * 3; i+=3)
+    for (int i = 0; i < ISLAND_SIZE; i++)
     {
-      currentCorner = i;
+      currentCorner = searchStartIndex + i*3;
       if ( ( v(currentCorner) == m_expansionIndex[ currentIsland ] + startHook ) && ( v(n(currentCorner)) == m_expansionIndex[ currentIsland ] + nextHook ) )
       {
         retVal = n(currentCorner);
+        break;
       }
       else if ( ( v(n(currentCorner)) == m_expansionIndex[ currentIsland ] + startHook ) && ( v(p(currentCorner)) == m_expansionIndex[ currentIsland ] + nextHook ) )
       {
         retVal = p(currentCorner);
+        break;
       }
       else if ( ( v(p(currentCorner)) == m_expansionIndex[ currentIsland ] + startHook ) && ( v(currentCorner) == m_expansionIndex[ currentIsland ] + nextHook ) )
       {
         retVal = currentCorner;
+        break;
       }
     }
     if ( DEBUG && DEBUG_MODE >= LOW )
