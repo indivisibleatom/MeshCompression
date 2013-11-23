@@ -611,7 +611,7 @@ class BaseMesh extends Mesh
 
                 ArrayList<Boolean> triangleStripList = m_triangleStrips[ n(currentCorner) ].expansion();
                 boolean flip = false;
-                if ( baseV(p(currentCorner)) > baseV(currentCorner ) ) //If the current island number is less than the other island number, no need to invert triangle strip
+                if ( baseV(p(currentCorner)) < baseV(currentCorner ) ) //If the current island number is less than the other island number, no need to invert triangle strip
                 {
                   flip = true;
                 }
