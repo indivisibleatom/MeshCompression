@@ -609,6 +609,11 @@ class BaseMesh extends Mesh
               {
                 adjustOppositesOnExpansion( currentCorner );
                 V[currentCorner] = m_expansionIndex[vertexNumber] + m_hooks[currentCorner]; //Set the vertex of the junction triangle to the expansion island's hook vertex                
+                if ( currentCorner != initCorner && O[3*nt-2] == -1)
+                {
+                  O[p(currentCorner)] = 3*nt - 2;
+                  O[3*nt - 2] = p(currentCorner);
+                }
 
                 ArrayList<Boolean> triangleStripList = m_triangleStrips[ n(currentCorner) ].expansion();
                 boolean flip = false;
@@ -698,6 +703,11 @@ class BaseMesh extends Mesh
                   print("Expanding multiple islands \n");
                   adjustOppositesOnExpansion( currentCorner );
                   V[currentCorner] = m_expansionIndex[vertexNumber] + m_hooks[currentCorner]; //Set the vertex of the junction triangle to the expansion island's hook vertex                
+                  if ( currentCorner != initCorner && O[3*nt-2] == -1)
+                  {
+                    O[p(currentCorner)] = 3*nt - 2;
+                    O[3*nt - 2] = p(currentCorner);
+                  }
                 }
                 m_beachEdgesExpanded++;
 
