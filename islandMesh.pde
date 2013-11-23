@@ -236,7 +236,30 @@ class IslandMesh extends Mesh
    }while (curCorner != initCorner);
    return -1;
  }
-
+ 
+ //Gives a beach edge, returns the island corner for edge having vertex as its incident vertex and haing prevV as the other vertex
+ private int getIslandCornerForVertexIncludingLagoon(int vertex, int prevV)
+ {
+   if ( DEBUG && DEBUG_MODE >= VERBOSE )
+   {
+     print("Getting island corner for first vertex for edge vertex1: " + vertex + " vertex2: " + prevV);
+   }
+   int initCorner = cForV(vertex);
+   int curCorner = initCorner;
+   do
+   {
+     if (island[curCorner] != -1 || isLagoonTriangleForCorner(curCorner))
+     {
+       if ( (vertex == prevV) || (v(n(curCorner)) == prevV) || (v(p(curCorner)) == prevV) )
+       {
+         return curCorner;
+       }
+     }
+     curCorner = s(curCorner);
+   }while (curCorner != initCorner);
+   return -1;
+ }
+ 
  //Returns island be unswinging
  private int getIslandByUnswing(int corner)
  {
@@ -341,7 +364,7 @@ class IslandMesh extends Mesh
    }
    return false;
  }
-   
+ 
  //Returns true is a triangle is incident on a beach edge
  private boolean hasBeachEdge(int triangle)
  {
@@ -440,11 +463,11 @@ class IslandMesh extends Mesh
      return tm[triangle];
    }
    
-   //returns all the corners that are incident on the vertex starting from first corner by swinging about prevVertex, vertex edge, going upto first non-island half-edge
+   //returns all the corners that are incident on the vertex starting from first corner by swinging about prevVertex, vertex edge, going upto first island (including lagoon) half-edge
    void incidentCorners( int vertex, int prevVertex, ArrayList<Integer> cornerList )
    {
      cornerList.clear();
-     int startCorner = findBeachEdgeCornerForVertex( vertex, prevVertex );
+     int startCorner = findStraitEdgeCornerForVertex( vertex, prevVertex );
      
      if (startCorner == -1)
      {
@@ -454,7 +477,7 @@ class IslandMesh extends Mesh
        }
      }
      int currentCorner = s(startCorner);
-     while ( island[currentCorner] == -1 )
+     while ( island[currentCorner] == -1 && !isLagoonTriangleForCorner(currentCorner) )
      {
        cornerList.add( currentCorner );
        currentCorner = s(currentCorner);
@@ -509,6 +532,23 @@ class IslandMesh extends Mesh
      return -1;
    }
    
+   int getNextVertexOnIslandIncludingLagoon( int finalV, int currentV, int prevV, int prevPrevV )
+   {
+     int v = findOtherStraitEdgeVertexForVertex( currentV, prevV, prevPrevV );
+     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+     {
+       print ("The value of v is " + v + " currentV " + currentV + " prevV " + prevV + "\n");
+     }
+     if ( v == finalV && currentV != finalV ) 
+     {
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
+       {
+         print( "Completing island" + v + " " + finalV);
+       }
+     }
+     return ( (v == finalV && currentV != finalV) ? -1 : v );
+   }
+   
    int getNextVertexOnIsland( int finalV, int currentV, int prevV, int prevPrevV )
    {
      int v = findOtherBeachEdgeVertexForVertex( currentV, prevV, prevPrevV );
@@ -529,6 +569,19 @@ class IslandMesh extends Mesh
    int findOtherBeachEdgeVertexForTriangleCorners( int c1, int c2 )
    {
      if ( hasBeachEdgeForCorners( c1, c2 ) )
+     {
+        return v(c2);
+     }
+     return -1;
+   }
+   
+   int findOtherIslandEdgeVertexForTriangleCorners( int c1, int c2 )
+   {
+     if ( hasBeachEdgeForCorners( c1, c2 ) )
+     {
+        return v(c2);
+     }
+     if ( isLagoonTriangleForCorner(c1) )
      {
         return v(c2);
      }
@@ -566,7 +619,34 @@ class IslandMesh extends Mesh
      }
      return -1;
    }
+   
+   //Given a vertex and prevVertex, find the corner for the strait edge
+   int findStraitEdgeCornerForVertex( int currentV, int otherV )
+   {
+     int c = getIslandCornerForVertexIncludingLagoon( currentV, otherV );
+     if ( DEBUG && DEBUG_MODE >= LOW )
+     {
+       if ( c == -1 )
+       {
+         print( "IslandMesh:findStraitEdgeCornerForVertex: Can't find island edge corner for currentVertex! Potential bug " + currentV + " " + otherV + "\n" );
+       }
+     }
+     return c;
+   }
+   
+   //Unswings till the outermost island-edge (including lagoon edge) is found
+   private int findStraitEdgeForBeachEdgeVertices( int currentV, int prevV )
+   {
+     int corner = findBeachEdgeCornerForVertex( currentV, prevV );
+     int swingCorner = p(corner);
+     while ( isLagoonTriangleForCorner( u( swingCorner ) ) )
+     {
+       swingCorner = u(swingCorner);
+     }
+     return n(swingCorner);
+   }
 
+   //Returns other beach edge, given current and prev
    int findOtherBeachEdgeVertexForVertex( int currentV, int prevV, int prevPrevV )
    {
      int c = getIslandCornerForVertex( currentV, prevV );
@@ -602,6 +682,55 @@ class IslandMesh extends Mesh
        print( "IslandMesh::findOtherBeachEdgeForBertex: Can't find beach edge vertex for currentVertex! Potential bug" );
      }
      return -1;
+   }
+   
+   //Find next beach edge, given a potential island edge
+   int findOtherBeachEdgeVertexForIslandEdge( int currentV, int prevV, int prevPrevV )
+   {
+     int c = getIslandCornerForVertexIncludingLagoon( currentV, prevV );
+     if ( DEBUG && DEBUG_MODE >= VERBOSE )
+     {
+       print("findOtherBeachEdgeVertexForIslandEdge: Island corner for vertex is " + c + "\n");
+     }
+     int currentCorner = c;
+     do
+     {
+       int otherBeachEdgeVertex1 = findOtherBeachEdgeVertexForTriangleCorners( currentCorner, n(currentCorner) );
+       int otherBeachEdgeVertex2 = findOtherBeachEdgeVertexForTriangleCorners( currentCorner, p(currentCorner) );
+       if ( DEBUG && DEBUG_MODE >= VERBOSE )
+       {
+         print("Other beach edge " + otherBeachEdgeVertex1 + " " + otherBeachEdgeVertex2 );
+       }
+       if ( (otherBeachEdgeVertex1 != -1) || (otherBeachEdgeVertex2 != -1) )
+       {
+         //If the currentV == prevV, we want to return the edge for which, the next leads to a valid beach edge vertex
+         if (  ( ( currentV == prevV ) || ( currentV != prevV && otherBeachEdgeVertex1 != prevV && otherBeachEdgeVertex1 != prevPrevV) ) && otherBeachEdgeVertex1 != -1 )
+         {
+           return otherBeachEdgeVertex1;
+         }
+         if ( ( currentV != prevV && otherBeachEdgeVertex2 != prevV && otherBeachEdgeVertex2 != prevPrevV ) && otherBeachEdgeVertex2 != -1 )
+         {
+           return otherBeachEdgeVertex2;
+         }
+       }
+       currentCorner = s( currentCorner );
+     } while ( currentCorner != c );
+     if ( DEBUG && DEBUG_MODE >= LOW )
+     {
+       print( "IslandMesh::findOtherBeachEdgeForBertex: Can't find beach edge vertex for currentVertex! Potential bug" );
+     }
+     return -1;
+   }
+   
+   int findOtherStraitEdgeVertexForVertex( int currentV, int prevV, int prevPrevV )
+   {
+     int beachEdgeVertex = findOtherBeachEdgeVertexForIslandEdge( currentV, prevV, prevPrevV );
+     int straitEdgeCorner = findStraitEdgeForBeachEdgeVertices( beachEdgeVertex, currentV );
+     if ( DEBUG && DEBUG_MODE >= LOW )
+     {
+       print("Vertex up next " + v(straitEdgeCorner) + "\n");
+     }
+     return v(straitEdgeCorner);
    }
    
    private boolean isLagoonTriangleForCorner( int corner1 )
@@ -714,7 +843,7 @@ class IslandMesh extends Mesh
          ArrayList<Integer> cornerList = new ArrayList<Integer>(); //Return the cornerList of JUNCTION and ISOLATEDWATER triangles obtained by swinging around
          do
          {
-           returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
+           returnedVertex = getNextVertexOnIslandIncludingLagoon( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
            if (returnedVertex != -1)
            {
              vm[returnedVertex] = 2;
@@ -730,7 +859,7 @@ class IslandMesh extends Mesh
            {
              if ( m_currentAdvances == m_numAdvances - 1 )
              {
-               print("Setting the current vertex to be " + (returnedVertex == -1 ? v : returnedVertex) + " the last vertex is " + currentVOnIsland + " " + vm[63] + "\n");
+               print("Setting the current vertex to be " + (returnedVertex == -1 ? v : returnedVertex) + " the last vertex is " + currentVOnIsland + "\n");
              }
            }
 
@@ -740,7 +869,7 @@ class IslandMesh extends Mesh
            {
              int incidentCorner = cornerList.get(j);
              
-             if ( DEBUG && DEBUG_MODE >= VERBOSE )
+             if ( DEBUG && DEBUG_MODE >= LOW )
              {
                if ( m_currentAdvances == m_numAdvances - 1)
                {
@@ -1095,7 +1224,7 @@ class IslandMesh extends Mesh
          ArrayList<Integer> cornerList = new ArrayList<Integer>(); //Return the cornerList of JUNCTION and ISOLATEDWATER triangles obtained by swinging around
          do
          {
-           returnedVertex = getNextVertexOnIsland( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
+           returnedVertex = getNextVertexOnIslandIncludingLagoon( v, currentVOnIsland, prevVOnIsland, prevPrevVOnIsland );
 
            incidentCorners( returnedVertex == -1 ? v : returnedVertex, currentVOnIsland, cornerList );
 
@@ -1758,7 +1887,7 @@ class IslandMesh extends Mesh
          prevPrevVertex = prevVertex;
          prevVertex = currentVertex;
          currentVertex = vertexNew;
-       } while ( (vertexNew = getNextVertexOnIsland( vertex, currentVertex, prevVertex, prevPrevVertex) ) != -1 );
+       } while ( (vertexNew = getNextVertexOnIslandIncludingLagoon( vertex, currentVertex, prevVertex, prevPrevVertex) ) != -1 ); //TODO msati3: Regress check this portion
      }
      else
      {

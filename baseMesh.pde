@@ -140,6 +140,7 @@ class BaseMesh extends Mesh
     if ( origCC != cc && DEBUG && DEBUG_MODE >= LOW )
     {
         print(" Hook " + m_hooks[cc] + "\n" ); 
+        print(" Opposite " + O[cc] + "\n");
         if ( m_triangleStrips[cc] != null )
         {
           print(" Triangle strips: ");
