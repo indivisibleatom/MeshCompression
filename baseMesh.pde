@@ -603,7 +603,7 @@ class BaseMesh extends Mesh
                   O[3*nt - 2] = p(currentCorner);
                 }
 
-                walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner );
+                walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner, CHANNEL );
               }
               else //The other island has been expanded. Fetch the expansion from the corner
               {
@@ -629,7 +629,7 @@ class BaseMesh extends Mesh
                 O[3*nt - 2] = p(currentCorner);
               }
 
-              walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner );
+              walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner, CAP );
             }
             else
             {
@@ -684,7 +684,7 @@ class BaseMesh extends Mesh
                   }
                 }
                 m_beachEdgesExpanded++;
-                walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner);
+                walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner, CHANNEL );
                 if ( m_beachEdgesExpanded > m_beachEdgesToExpand )
                 {
                   m_beachEdgesToExpand++;
@@ -737,7 +737,7 @@ class BaseMesh extends Mesh
                   print("Walk and expand " + m_hooks[currentCorner] + " " + m_hooks[nextS] + " " + vertexNumber + " " + v(p(currentCorner)) + " " + maxVertexNum + "\n");
                 }
               }
-              walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner);
+              walkAndExpand( m_hooks[currentCorner], m_hooks[nextS], vertexNumber, v(p(currentCorner)), maxVertexNum, currentCorner, CAP );
               if ( m_beachEdgesExpanded > m_beachEdgesToExpand )
               {
                 m_beachEdgesToExpand++;
@@ -783,7 +783,7 @@ class BaseMesh extends Mesh
     {
       if ( retVal == -1 )
       {
-        print ("Get corner for hook pair - can't find appropriate corner for the hook!!\n");
+        print ("Get corner for hook pair - can't find appropriate corner for the hook!! " + startHook + " " + nextHook + "\n");
       }
     }
     return retVal;
@@ -806,7 +806,7 @@ class BaseMesh extends Mesh
     }
   }
   
-  private void walkAndExpand(int startHook, int endHook, int currentIsland, int nextIsland, int maxVertexNum, int currentCorner)
+  private void walkAndExpand(int startHook, int endHook, int currentIsland, int nextIsland, int maxVertexNum, int currentCorner, int type)
   {
     int start = startHook;
     int end = endHook;
@@ -814,7 +814,7 @@ class BaseMesh extends Mesh
       
     for (int i = start; start <= end ? (i < end) : (i < end + maxVertexNum); i++)
     {
-      int cornerIsland = getCornerForHookPair( currentIsland, i, (i + 1)%maxVertexNum ); //Corner on island, corresponding to next vertex to i
+      int cornerIsland = getCornerForHookPair( currentIsland, i%maxVertexNum, (i + 1)%maxVertexNum ); //Corner on island, corresponding to next vertex to i
 
       if ( m_beachEdgesToExpand != -1 && m_beachEdgesToExpand < m_beachEdgesExpanded )
       {
@@ -829,9 +829,10 @@ class BaseMesh extends Mesh
         }
         addTriangle( m_expansionIndex[currentIsland] + ((i + 1) % maxVertexNum), m_expansionIndex[currentIsland] + (i%maxVertexNum), nextIsland );
         addOppositesAndUpdateCornerForChannel( cornerIsland, cornerLastChannelFan, currentCorner );
-        cornerLastChannelFan = 3*nt - 2; //TODO msati3: Move to the main API
-        tm[nt-1] = CHANNEL;
+        tm[nt-1] = type;
       }
+      cornerLastChannelFan = 3*nt - 2; //TODO msati3: Move to the main API
+
 
       m_beachEdgesExpanded++;
     }   
@@ -875,9 +876,9 @@ class BaseMesh extends Mesh
       }
       else
       {
+        currentCornerOnFan = s(currentCornerOnFan);
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
-          currentCornerOnFan = s(currentCornerOnFan);
           V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
         }
         currentVertexOffset2 = (maxVertexNum + currentVertexOffset2 - 1) % maxVertexNum;

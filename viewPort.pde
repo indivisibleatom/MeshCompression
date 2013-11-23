@@ -150,8 +150,8 @@ class Viewport
 
     camera(E.x, E.y, E.z, F.x, F.y, F.z, U.x, U.y, U.z); // defines the view : eye, ctr, up
     vec Li=U(A(V(E,F),0.1*d(E,F),J));   // vec Li=U(A(V(E,F),-d(E,F),J)); 
-    directionalLight(255,255,255,Li.x,Li.y,Li.z); // direction of light: behind and above the viewer
-    specular(255,255,0); shininess(5);  
+    //directionalLight(255,255,255,Li.x,Li.y,Li.z); // direction of light: behind and above the viewer
+    //specular(255,255,0); shininess(5);  
     SetFrame(Q,I,J,K);
     m_meshInteractor.drawRegisteredMeshes();
 
