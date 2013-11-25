@@ -876,7 +876,7 @@ class BaseMesh extends Mesh
     }
   }
   
-  private void walkAndExpand(int startHook, int endHook, int currentIsland, int nextIsland, int maxVertexNum, int currentCorner, int type)
+  private void walkAndExpand(int startHook, int endHook, int currentIsland, int nextIsland, int maxVertexNum, int cornerJunction, int type)
   {
     int start = startHook;
     int end = endHook >= startHook ? endHook : endHook + maxVertexNum;
@@ -886,8 +886,6 @@ class BaseMesh extends Mesh
     {
       int currentLocalVertNum = i % maxVertexNum;
       int posNextLocalVertNum = (i + 1) % maxVertexNum;
-      
-      print("Trying to expand " + currentLocalVertNum + " " + posNextLocalVertNum + "\n");
       
       int cornerIsland = getCornerForHookPair( currentIsland, currentLocalVertNum, posNextLocalVertNum ); //Corner on island, corresponding to next vertex to i
       int prevCorner = p(cornerIsland);
@@ -908,8 +906,8 @@ class BaseMesh extends Mesh
         }
       }
 
-      int advanceCorner = n(prevCorner);
-      int nextLocalVertNum = getHookFromVertexNumber( v(advanceCorner), m_expansionIndex[currentIsland] );
+      cornerIsland = n(prevCorner);
+      int nextLocalVertNum = getHookFromVertexNumber( v(cornerIsland), m_expansionIndex[currentIsland] );
 
       if ( m_beachEdgesToExpand != -1 && m_beachEdgesToExpand < m_beachEdgesExpanded )
       {
@@ -923,12 +921,12 @@ class BaseMesh extends Mesh
           print("Expand edge hook " + currentLocalVertNum + " next local vert " + nextLocalVertNum + "\n");
         }
         addTriangle( m_expansionIndex[currentIsland] + nextLocalVertNum, m_expansionIndex[currentIsland] + currentLocalVertNum, nextIsland );
-        addOppositesAndUpdateCornerForChannel( cornerIsland, cornerLastChannelFan, currentCorner );
+        addOppositesAndUpdateCornerForChannel( cornerIsland, cornerLastChannelFan, cornerJunction );
         tm[nt-1] = type;
       }
       cornerLastChannelFan = 3*nt - 2; //TODO msati3: Move to the main API
       i = nextLocalVertNum < i ? nextLocalVertNum + maxVertexNum : nextLocalVertNum;
-
+      
       m_beachEdgesExpanded++;
     }   
   }
