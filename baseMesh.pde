@@ -960,12 +960,32 @@ class BaseMesh extends Mesh
       
       if ( advanceOnCurrentIsland )
       {
+         //Given the current and next local vetex number, try to find out the correct next local vertex (including lagoon)
+        int cornerNext = getCornerForHookPair( currentIsland, currentVertexOffset1, (currentVertexOffset1+1)%maxVertexNum );
+        int prevCorner = p(cornerNext);
+        //Unswing to get the outermost lagoon triangle
+        if ( m_beachEdgesToExpand != -1 )
+        {
+          while (o(p(prevCorner)) != -1 && (tm[o(p(prevCorner))] == ISLAND || tm[t(o(p(prevCorner)))] == LAGOON))
+          {
+              prevCorner = u(prevCorner);
+          }
+        }
+        else
+        {
+          while (o(p(prevCorner)) != -1)
+          {
+            prevCorner = u(prevCorner);
+          }
+        }
+        int nextLocalVertex = getHookFromVertexNumber( v(n(prevCorner)), m_expansionIndex[currentIsland] );
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
-          addTriangle( m_expansionIndex[currentIsland] + ((currentVertexOffset1 + 1) % maxVertexNum), m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
+          addTriangle( m_expansionIndex[currentIsland] + nextLocalVertex, m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
           tm[nt-1] = CHANNEL;
         }
-        currentVertexOffset1 = (currentVertexOffset1 + 1) % maxVertexNum;
+
+        currentVertexOffset1 = nextLocalVertex;      
       }
       else
       {
