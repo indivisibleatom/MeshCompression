@@ -994,7 +994,7 @@ class BaseMesh extends Mesh
         {
           V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
         }
-        currentVertexOffset2 = (maxVertexNum + currentVertexOffset2 - 1) % maxVertexNum;
+        currentVertexOffset2 = getHookFromVertexNumber( v(p(currentCornerOnFan)), m_expansionIndex[nextIsland] );
       }
       m_beachEdgesExpanded++;
     }
