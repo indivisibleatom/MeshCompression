@@ -140,7 +140,6 @@ class BaseMesh extends Mesh
     if ( origCC != cc && DEBUG && DEBUG_MODE >= LOW )
     {
         print(" Hook " + m_hooks[cc] + "\n" ); 
-        print(" Opposite " + O[cc] + "\n");
         if ( m_triangleStrips[cc] != null )
         {
           print(" Triangle strips: ");
@@ -270,7 +269,7 @@ class BaseMesh extends Mesh
     {
       if ( hookNumber >= VERTICES_PER_ISLAND )
       {
-        print ("getHookFromVertexNumber - the hook number that is determined is greater than the number of the vertices on an island!!");
+        print ("getHookFromVertexNumber - the hook number that is determined is greater than the number of the vertices on an island!!" + vertexNumber + " " + baseOffset + "\n");
       }
     }
     
@@ -880,12 +879,37 @@ class BaseMesh extends Mesh
   private void walkAndExpand(int startHook, int endHook, int currentIsland, int nextIsland, int maxVertexNum, int currentCorner, int type)
   {
     int start = startHook;
-    int end = endHook;
+    int end = endHook >= startHook ? endHook : endHook + maxVertexNum;
     int cornerLastChannelFan = -1;
-      
-    for (int i = start; start <= end ? (i < end) : (i < end + maxVertexNum); i++)
+
+    for (int i = start; i < end;)
     {
-      int cornerIsland = getCornerForHookPair( currentIsland, i%maxVertexNum, (i + 1)%maxVertexNum ); //Corner on island, corresponding to next vertex to i
+      int currentLocalVertNum = i % maxVertexNum;
+      int posNextLocalVertNum = (i + 1) % maxVertexNum;
+      
+      print("Trying to expand " + currentLocalVertNum + " " + posNextLocalVertNum + "\n");
+      
+      int cornerIsland = getCornerForHookPair( currentIsland, currentLocalVertNum, posNextLocalVertNum ); //Corner on island, corresponding to next vertex to i
+      int prevCorner = p(cornerIsland);
+
+      //Unswing to get the outermost lagoon triangle
+      if ( m_beachEdgesToExpand != -1 )
+      {
+        while (o(p(prevCorner)) != -1 && (tm[o(p(prevCorner))] == ISLAND || tm[t(o(p(prevCorner)))] == LAGOON))
+        {
+          prevCorner = u(prevCorner);
+        }
+      }
+      else
+      {
+        while (o(p(prevCorner)) != -1)
+        {
+          prevCorner = u(prevCorner);
+        }
+      }
+
+      int advanceCorner = n(prevCorner);
+      int nextLocalVertNum = getHookFromVertexNumber( v(advanceCorner), m_expansionIndex[currentIsland] );
 
       if ( m_beachEdgesToExpand != -1 && m_beachEdgesToExpand < m_beachEdgesExpanded )
       {
@@ -896,14 +920,14 @@ class BaseMesh extends Mesh
       {
         if ( m_beachEdgesToExpand != -1 )
         {
-          print("Expand edge hook " + (i)%maxVertexNum + "\n");
+          print("Expand edge hook " + currentLocalVertNum + " next local vert " + nextLocalVertNum + "\n");
         }
-        addTriangle( m_expansionIndex[currentIsland] + ((i + 1) % maxVertexNum), m_expansionIndex[currentIsland] + (i%maxVertexNum), nextIsland );
+        addTriangle( m_expansionIndex[currentIsland] + nextLocalVertNum, m_expansionIndex[currentIsland] + currentLocalVertNum, nextIsland );
         addOppositesAndUpdateCornerForChannel( cornerIsland, cornerLastChannelFan, currentCorner );
         tm[nt-1] = type;
       }
       cornerLastChannelFan = 3*nt - 2; //TODO msati3: Move to the main API
-
+      i = nextLocalVertNum < i ? nextLocalVertNum + maxVertexNum : nextLocalVertNum;
 
       m_beachEdgesExpanded++;
     }   
