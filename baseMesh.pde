@@ -114,8 +114,11 @@ class BaseMesh extends Mesh
     super.pickc(X);
     if ( origCC != cc && DEBUG && DEBUG_MODE >= LOW )
     {
-        print(" Hook " + m_channelExpansionManager.hookForCorner(cc) + "\n" ); 
-        if ( m_channelExpansionManager.triangleStripForCorner(cc) != null )
+        if ( cc < m_channelExpansionManager.nc )
+        {
+          print(" Hook " + m_channelExpansionManager.hookForCorner(cc) + "\n" ); 
+        }
+        if ( cc < m_channelExpansionManager.nc && m_channelExpansionManager.triangleStripForCorner(cc) != null )
         {
           print(" Triangle strips: ");
           for (int i = 0; i < m_channelExpansionManager.triangleStripForCorner(cc).expansion().size(); i++)
@@ -929,6 +932,17 @@ class BaseMesh extends Mesh
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
           addTriangle( m_expansionIndex[currentIsland] + nextLocalVertex, m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
+          
+          //Set opposite of the beach edge and added triangle
+          O[p(prevCorner)] = 3*nt-1;
+          O[3*nt-1] = p(prevCorner);
+          
+          //Fixup opposites between channel and junction triangles
+          O[3*nt-2] = o(n(currentCornerOnFan));
+          O[o(n(currentCornerOnFan))] = 3*nt-2;
+          O[3*nt-3] = n(currentCornerOnFan);
+          O[n(currentCornerOnFan)] = 3*nt-3;
+
           tm[nt-1] = CHANNEL;
         }
 
