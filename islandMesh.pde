@@ -727,7 +727,7 @@ class IslandMesh extends Mesh
    {
      int beachEdgeVertex = findOtherBeachEdgeVertexForIslandEdge( currentV, prevV, prevPrevV );
      int straitEdgeCorner = findStraitEdgeForBeachEdgeVertices( beachEdgeVertex, currentV );
-     if ( DEBUG && DEBUG_MODE >= LOW )
+     if ( DEBUG && DEBUG_MODE >= VERBOSE )
      {
        print("Vertex up next " + v(straitEdgeCorner) + "\n");
      }

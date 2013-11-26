@@ -889,8 +889,10 @@ class BaseMesh extends Mesh
   
   private void walkAndExpandBoth( int startHook, int endHook, int currentIsland, int maxVertexNum, int startHookOther, int endHookOther, int nextIsland, ArrayList<Boolean> triangleStripList, boolean flip, int currentCorner )
   {
+    print("Reached here\n");
     int currentVertexOffset1 = startHook;
     int currentVertexOffset2 = startHookOther;
+    int origNextSwingCorner = -1; //Cache the corner to swing to, so that post opposite population, all works well  
     
     // track the current corner on the fan. Each time no progress on self strip, change the vertex of the corner appropriately. Else, increase the vertex number on the
     int currentCornerOnFan = currentCorner;
@@ -932,12 +934,20 @@ class BaseMesh extends Mesh
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
           addTriangle( m_expansionIndex[currentIsland] + nextLocalVertex, m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
-          
+          print("Adding triangle " + (m_expansionIndex[currentIsland] + nextLocalVertex) + " " + (m_expansionIndex[currentIsland] + currentVertexOffset1) + " " + m_expansionIndex[nextIsland] + currentVertexOffset2 + "\n");
+
+          //Cache the corner got to by swinging for later use
+          if (origNextSwingCorner == -1)
+          {
+            origNextSwingCorner = s(currentCornerOnFan);
+          }
+
           //Set opposite of the beach edge and added triangle
           O[p(prevCorner)] = 3*nt-1;
           O[3*nt-1] = p(prevCorner);
           
           //Fixup opposites between channel and junction triangles
+          
           O[3*nt-2] = o(n(currentCornerOnFan));
           O[o(n(currentCornerOnFan))] = 3*nt-2;
           O[3*nt-3] = n(currentCornerOnFan);
@@ -950,11 +960,21 @@ class BaseMesh extends Mesh
       }
       else
       {
-        currentCornerOnFan = s(currentCornerOnFan);
+        print("Corner on fan is " + currentCornerOnFan + " " + origNextSwingCorner + " " + s(currentCornerOnFan) + "\n");
+        if (origNextSwingCorner == -1)
+        {
+          currentCornerOnFan = s(currentCornerOnFan);
+        }
+        else
+        {
+          currentCornerOnFan = origNextSwingCorner;
+        }
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
           V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
+          origNextSwingCorner = -1;
         }
+        print("Here " + v(p(currentCornerOnFan)) + " " + nextIsland + "\n" );
         currentVertexOffset2 = getHookFromVertexNumber( v(p(currentCornerOnFan)), m_expansionIndex[nextIsland] );
       }
       m_beachEdgesExpanded++;
