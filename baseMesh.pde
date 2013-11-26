@@ -31,6 +31,31 @@ class SOffsetState
   public int s() { return m_s; }
 }
 
+//Debug information
+class StepWiseDualExpansionState
+{
+  private int m_v1Offset;
+  private int m_v2Offset;
+  private int m_origNextSwingCorner;
+  private int m_i;
+  private int m_currentCornerOnFan;
+    
+  StepWiseDualExpansionState( int v1Offset, int v2Offset, int origNextSwingCorner, int currentCornerOnFan, int i )
+  {
+    m_v1Offset = v1Offset; 
+    m_v2Offset = v2Offset;
+    m_origNextSwingCorner = origNextSwingCorner;
+    m_i = i;
+    m_currentCornerOnFan = currentCornerOnFan;
+  }
+    
+  int v1Offset() { return m_v1Offset; }
+  int v2Offset() { return m_v2Offset; }
+  int origNextSwingCorner() { return m_origNextSwingCorner; }
+  int i() { return m_i; }
+  int currentCornerOnFan() { return m_currentCornerOnFan; }
+}
+
 class BaseMesh extends Mesh
 {
   int m_expandedIsland;
@@ -47,6 +72,9 @@ class BaseMesh extends Mesh
   int m_beachEdgesExpanded = 0;
   int m_vertexNumberToExpandStepWise = 0;
   int m_cornerNumberToExpandStepWise = 0;
+  
+  //Debug information
+  StepWiseDualExpansionState m_dualExpansionState;
   
   int m_initSize;
   
@@ -724,11 +752,19 @@ class BaseMesh extends Mesh
                 {
                   flip = true;
                 }
-                walkAndExpandBoth( m_channelExpansionManager.hookForCorner(currentCorner), m_channelExpansionManager.hookForCorner(nextS), vertexNumber, maxVertexNum, m_channelExpansionManager.hookForCorner(p(currentCorner)), m_channelExpansionManager.hookForCorner(unswingBase(p(currentCorner))), baseV(p(currentCorner)), triangleStripList, flip, currentCorner );
+                if ( m_dualExpansionState == null )
+                {
+                  m_dualExpansionState = new StepWiseDualExpansionState( m_channelExpansionManager.hookForCorner(currentCorner), m_channelExpansionManager.hookForCorner(nextS), -1, currentCorner, 0 );
+                }
+                walkAndExpandBothStepWise( m_channelExpansionManager.hookForCorner(currentCorner), m_channelExpansionManager.hookForCorner(nextS), vertexNumber, maxVertexNum, m_channelExpansionManager.hookForCorner(p(currentCorner)), m_channelExpansionManager.hookForCorner(unswingBase(p(currentCorner))), baseV(p(currentCorner)), triangleStripList, flip, currentCorner );
                 if ( m_beachEdgesExpanded > m_beachEdgesToExpand )
                 {
                   m_beachEdgesToExpand++;
                   return;
+                }
+                else
+                {
+                  m_dualExpansionState = null;
                 }
               }
             }
@@ -889,7 +925,6 @@ class BaseMesh extends Mesh
   
   private void walkAndExpandBoth( int startHook, int endHook, int currentIsland, int maxVertexNum, int startHookOther, int endHookOther, int nextIsland, ArrayList<Boolean> triangleStripList, boolean flip, int currentCorner )
   {
-    print("Reached here\n");
     int currentVertexOffset1 = startHook;
     int currentVertexOffset2 = startHookOther;
     int origNextSwingCorner = -1; //Cache the corner to swing to, so that post opposite population, all works well  
@@ -974,6 +1009,88 @@ class BaseMesh extends Mesh
           V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
           origNextSwingCorner = -1;
         }
+        print("Here " + v(p(currentCornerOnFan)) + " " + nextIsland + "\n" );
+        currentVertexOffset2 = getHookFromVertexNumber( v(p(currentCornerOnFan)), m_expansionIndex[nextIsland] );
+      }
+      m_beachEdgesExpanded++;
+    }
+  }  
+ 
+  private void walkAndExpandBothStepWise( int startHook, int endHook, int currentIsland, int maxVertexNum, int startHookOther, int endHookOther, int nextIsland, ArrayList<Boolean> triangleStripList, boolean flip, int currentCorner )
+  {
+    StepWiseDualExpansionState state = m_dualExpansionState;
+    int currentVertexOffset1 = state.v1Offset();
+    int currentVertexOffset2 = state.v2Offset();
+    int origNextSwingCorner = state.origNextSwingCorner(); //Cache the corner to swing to, so that post opposite population, all works well  
+    
+    // track the current corner on the fan. Each time no progress on self strip, change the vertex of the corner appropriately. Else, increase the vertex number on the
+    int currentCornerOnFan = state.currentCornerOnFan();
+    int i = state.i();
+    m_beachEdgesExpanded += i;
+    print("Walk and expand both " + currentVertexOffset1 + " " + currentVertexOffset2 + " " + origNextSwingCorner + " " + i + " " + m_beachEdgesExpanded + " " + m_beachEdgesToExpand + "\n");
+    
+    for (; i < triangleStripList.size(); i++)
+    {
+      if ( m_beachEdgesToExpand < m_beachEdgesExpanded )
+      {
+        m_dualExpansionState = new StepWiseDualExpansionState( currentVertexOffset1, currentVertexOffset2, origNextSwingCorner, currentCornerOnFan, i );
+        return;
+      }
+
+      boolean advanceOnCurrentIsland = triangleStripList.get(i) ^ flip;
+      if ( m_beachEdgesToExpand == m_beachEdgesExpanded )
+      {
+        print("Advance on currentIsland " + advanceOnCurrentIsland + "\n");
+      }
+      
+      if ( advanceOnCurrentIsland )
+      {
+         //Given the current and next local vetex number, try to find out the correct next local vertex (including lagoon)
+        int cornerNext = getCornerForHookPair( currentIsland, currentVertexOffset1, (currentVertexOffset1+1)%maxVertexNum );
+        int prevCorner = p(cornerNext);
+        //Unswing to get the outermost lagoon triangle
+        while (o(p(prevCorner)) != -1 && (tm[o(p(prevCorner))] == ISLAND || tm[t(o(p(prevCorner)))] == LAGOON))
+        {
+            prevCorner = u(prevCorner);
+        }
+
+        int nextLocalVertex = getHookFromVertexNumber( v(n(prevCorner)), m_expansionIndex[currentIsland] );
+        addTriangle( m_expansionIndex[currentIsland] + nextLocalVertex, m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
+        print("Adding triangle " + (m_expansionIndex[currentIsland] + nextLocalVertex) + " " + (m_expansionIndex[currentIsland] + currentVertexOffset1) + " " + m_expansionIndex[nextIsland] + currentVertexOffset2 + "\n");
+
+        //Cache the corner got to by swinging for later use
+        if (origNextSwingCorner == -1)
+        {
+          origNextSwingCorner = s(currentCornerOnFan);
+        }
+
+        //Set opposite of the beach edge and added triangle
+        O[p(prevCorner)] = 3*nt-1;
+        O[3*nt-1] = p(prevCorner);
+          
+        //Fixup opposites between channel and junction triangles
+          
+        O[3*nt-2] = o(n(currentCornerOnFan));
+        O[o(n(currentCornerOnFan))] = 3*nt-2;
+        O[3*nt-3] = n(currentCornerOnFan);
+        O[n(currentCornerOnFan)] = 3*nt-3;
+
+        tm[nt-1] = CHANNEL;
+        currentVertexOffset1 = nextLocalVertex;      
+      }
+      else
+      {
+        print("Corner on fan is " + currentCornerOnFan + " " + origNextSwingCorner + " " + s(currentCornerOnFan) + "\n");
+        if (origNextSwingCorner == -1)
+        {
+          currentCornerOnFan = s(currentCornerOnFan);
+        }
+        else
+        {
+          currentCornerOnFan = origNextSwingCorner;
+        }
+        V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
+        origNextSwingCorner = -1;
         print("Here " + v(p(currentCornerOnFan)) + " " + nextIsland + "\n" );
         currentVertexOffset2 = getHookFromVertexNumber( v(p(currentCornerOnFan)), m_expansionIndex[nextIsland] );
       }
