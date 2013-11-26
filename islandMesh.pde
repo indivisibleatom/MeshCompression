@@ -46,6 +46,7 @@ class IslandMesh extends Mesh
  //TODO msati3: clean this up...where does this go? Do wholistically
  RingExpanderResult m_ringExpanderResult = null;
  IslandExpansionManager m_islandExpansionManager = null;
+ ChannelExpansionPacketManager m_channelExpansionManager = null;
  BaseMesh baseMesh = null;
  
  //Debugging functionality
@@ -754,12 +755,13 @@ class IslandMesh extends Mesh
     //Populate the G of the base mesh
     BaseMesh populateBaseG()
     {
+     m_channelExpansionManager = new ChannelExpansionPacketManager(nt);
      if ( DEBUG && DEBUG_MODE >= LOW )
      {
        print("Creating new base mesh");
      }
      baseMesh = new BaseMesh();
-     baseMesh.setExpansionManager( m_islandExpansionManager );
+     baseMesh.setExpansionManager( m_islandExpansionManager, m_channelExpansionManager );
      baseMesh.declareVectors();
 
      m_vertexForIsland = new HashMap< Integer, Integer >();
@@ -909,18 +911,19 @@ class IslandMesh extends Mesh
                       {
                         print("Adding triangle for these vertices in main mesh " + (returnedVertex == -1 ? v : returnedVertex) + " " + vertex2 + " " + vertex3 + "\n");
                       }                 
-                      baseMesh.addTriangle(bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                      baseMesh.addTriangle(bv1, bv2, bv3);
+                      m_channelExpansionManager.addChannelExpansionPacket(bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ));
                       triangleAdded = true;
                    }
                    else
                    {
-                     triangle = baseMesh.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
-                     bCornerForVertex = (baseMesh.v(3*triangle) == bv1) ? 3*triangle : (baseMesh.v(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
+                     triangle = m_channelExpansionManager.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                     bCornerForVertex = (m_channelExpansionManager.islandForCorner(3*triangle) == bv1) ? 3*triangle : (m_channelExpansionManager.islandForCorner(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
                    }
                  }
                  else //The triangle has already been added while moving around another island. Fetch its corners
                  {
-                   triangle = baseMesh.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                   triangle = m_channelExpansionManager.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
                    if ( triangle == -1 )
                    {
                      if ( DEBUG && DEBUG_MODE >= LOW )
@@ -928,7 +931,7 @@ class IslandMesh extends Mesh
                        print("Tried finding added triangle in base mesh - returned -1! Error");
                      }
                    }
-                   bCornerForVertex = (baseMesh.v(3*triangle) == bv1) ? 3*triangle : (baseMesh.v(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
+                   bCornerForVertex = (m_channelExpansionManager.islandForCorner(3*triangle) == bv1) ? 3*triangle : (m_channelExpansionManager.islandForCorner(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
                  }
                  if ( bTrackedC2 != -1 ) //If junction / water has been encountered thus far
                  {
@@ -936,7 +939,7 @@ class IslandMesh extends Mesh
                    {
                      if ( m_currentAdvances == m_numAdvances-1 )
                      {
-                       addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+                       addOppositeForUnusedIsland( m_channelExpansionManager.nc-1, m_channelExpansionManager.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
                      }
                      triangleStripCurrent = new ArrayList<Boolean>();
                    }
@@ -953,8 +956,8 @@ class IslandMesh extends Mesh
                  {
                    if ( triangleAdded )
                    {
-                     bFirstC2 = baseMesh.nc-2;
-                     bFirstC3 = baseMesh.nc-1;
+                     bFirstC2 = m_channelExpansionManager.nc-2;
+                     bFirstC3 = m_channelExpansionManager.nc-1;
                    }
                    else
                    {
@@ -971,8 +974,8 @@ class IslandMesh extends Mesh
 
                  if ( triangleAdded )
                  {
-                   bTrackedC2 = baseMesh.nc-2;
-                   bTrackedC3 = baseMesh.nc-1;
+                   bTrackedC2 = m_channelExpansionManager.nc-2;
+                   bTrackedC3 = m_channelExpansionManager.nc-1;
                  }
                  else
                  {
@@ -1122,12 +1125,13 @@ class IslandMesh extends Mesh
            {
              if ( island1 <= island2 && island1 <= island3 )
              {
-               baseMesh.addTriangle(island1, island2, island3, m_islandVertexNumber.get(v(currentCorner)), m_islandVertexNumber.get(v(n(currentCorner))), m_islandVertexNumber.get(v(p(currentCorner))) );
+               baseMesh.addTriangle(island1, island2, island3);
+               m_channelExpansionManager.addChannelExpansionPacket(island1, island2, island3, m_islandVertexNumber.get(v(currentCorner)), m_islandVertexNumber.get(v(n(currentCorner))), m_islandVertexNumber.get(v(p(currentCorner))) );
                fTriangleAdded = true;
              }
              else //Handle already added triangles triangles
              {
-               triangle = baseMesh.getTriangle( island1, island2, island3, m_islandVertexNumber.get( v(currentCorner) ), m_islandVertexNumber.get( v(n(currentCorner)) ), m_islandVertexNumber.get( v(p(currentCorner)) ) );
+               triangle = m_channelExpansionManager.getTriangle( island1, island2, island3, m_islandVertexNumber.get( v(currentCorner) ), m_islandVertexNumber.get( v(n(currentCorner)) ), m_islandVertexNumber.get( v(p(currentCorner)) ) );
                if ( triangle == -1 )
                {
                  if ( DEBUG && DEBUG_MODE >= LOW )
@@ -1135,14 +1139,14 @@ class IslandMesh extends Mesh
                    print("Tried finding added triangle in base mesh - returned -1! Error");
                  }
                }
-               bCornerForVertex = (baseMesh.v(3*triangle) == island1) ? 3*triangle : (baseMesh.v(3*triangle+1) == island1) ? 3*triangle+1 : 3*triangle+2;
+               bCornerForVertex = (m_channelExpansionManager.islandForCorner(3*triangle) == island1) ? 3*triangle : (m_channelExpansionManager.islandForCorner(3*triangle+1) == island1) ? 3*triangle+1 : 3*triangle+2;
              }
              
              if ( bTrackedC2 != -1 )
              {
                if ( fTriangleAdded )
                {
-                 addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+                 addOppositeForUnusedIsland( m_channelExpansionManager.nc-1, m_channelExpansionManager.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
                  triangleStripCurrent = new ArrayList<Boolean>();
                }
                else
@@ -1155,8 +1159,8 @@ class IslandMesh extends Mesh
              {
                if ( fTriangleAdded )
                {
-                 bFirstC2 = baseMesh.nc-2;
-                 bFirstC3 = baseMesh.nc-1;
+                 bFirstC2 = m_channelExpansionManager.nc-2;
+                 bFirstC3 = m_channelExpansionManager.nc-1;
                }
                else
                {
@@ -1168,8 +1172,8 @@ class IslandMesh extends Mesh
                    
              if ( fTriangleAdded )
              {
-               bTrackedC2 = baseMesh.nc-2;
-               bTrackedC3 = baseMesh.nc-1;                 
+               bTrackedC2 = m_channelExpansionManager.nc-2;
+               bTrackedC3 = m_channelExpansionManager.nc-1;                 
              }
              else
              {
@@ -1250,12 +1254,13 @@ class IslandMesh extends Mesh
                {
                  if ( bv1 <= bv2 && bv1 <= bv3 )
                  {
-                   baseMesh.addTriangle(bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                   baseMesh.addTriangle(bv1, bv2, bv3);
+                   m_channelExpansionManager.addChannelExpansionPacket(bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
                    fTriangleAdded = true;
                  }
                  else //The triangle has already been added while moving around another island. Fetch its corners
                  {
-                   triangle = baseMesh.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
+                   triangle = m_channelExpansionManager.getTriangle( bv1, bv2, bv3, m_islandVertexNumber.get( v(incidentCorner) ), m_islandVertexNumber.get( vertex2 ), m_islandVertexNumber.get( vertex3 ) );
                    if ( triangle == -1 )
                    {
                      if ( DEBUG && DEBUG_MODE >= LOW )
@@ -1263,13 +1268,13 @@ class IslandMesh extends Mesh
                        print("Tried finding added triangle in base mesh - returned -1! Error");
                      }
                    }
-                   bCornerForVertex = (baseMesh.v(3*triangle) == bv1) ? 3*triangle : (baseMesh.v(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
+                   bCornerForVertex = (m_channelExpansionManager.islandForCorner(3*triangle) == bv1) ? 3*triangle : (m_channelExpansionManager.islandForCorner(3*triangle+1) == bv1) ? 3*triangle+1 : 3*triangle+2;
                  }
                  if ( bTrackedC2 != -1 )
                  {
                    if ( fTriangleAdded )
                    {
-                     addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+                     addOppositeForUnusedIsland( m_channelExpansionManager.nc-1, m_channelExpansionManager.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
                      triangleStripCurrent = new ArrayList<Boolean>();
                    }
                    else
@@ -1282,8 +1287,8 @@ class IslandMesh extends Mesh
                  {
                    if ( fTriangleAdded )
                    {
-                     bFirstC2 = baseMesh.nc-2;
-                     bFirstC3 = baseMesh.nc-1;
+                     bFirstC2 = m_channelExpansionManager.nc-2;
+                     bFirstC3 = m_channelExpansionManager.nc-1;
                    }
                    else
                    {
@@ -1296,8 +1301,8 @@ class IslandMesh extends Mesh
                  
                  if ( fTriangleAdded )
                  {
-                   bTrackedC2 = baseMesh.nc-2;
-                   bTrackedC3 = baseMesh.nc-1;                 
+                   bTrackedC2 = m_channelExpansionManager.nc-2;
+                   bTrackedC3 = m_channelExpansionManager.nc-1;                 
                  }
                  else
                  {
@@ -1379,12 +1384,13 @@ class IslandMesh extends Mesh
            {
              if ( island1 <= island2 && island1 <= island3 )
              {
-               baseMesh.addTriangle(island1, island2, island3, m_islandVertexNumber.get(v(currentCorner)), m_islandVertexNumber.get(v(n(currentCorner))), m_islandVertexNumber.get(v(p(currentCorner))) );
+               baseMesh.addTriangle(island1, island2, island3);
+               m_channelExpansionManager.addChannelExpansionPacket(island1, island2, island3, m_islandVertexNumber.get(v(currentCorner)), m_islandVertexNumber.get(v(n(currentCorner))), m_islandVertexNumber.get(v(p(currentCorner))) );
                fTriangleAdded = true;
              }
              else //Handle already added triangles triangles
              {
-               triangle = baseMesh.getTriangle( island1, island2, island3, m_islandVertexNumber.get( v(currentCorner) ), m_islandVertexNumber.get( v(n(currentCorner)) ), m_islandVertexNumber.get( v(p(currentCorner)) ) );
+               triangle = m_channelExpansionManager.getTriangle( island1, island2, island3, m_islandVertexNumber.get( v(currentCorner) ), m_islandVertexNumber.get( v(n(currentCorner)) ), m_islandVertexNumber.get( v(p(currentCorner)) ) );
                if ( triangle == -1 )
                {
                  if ( DEBUG && DEBUG_MODE >= LOW )
@@ -1392,14 +1398,14 @@ class IslandMesh extends Mesh
                    print("Tried finding added triangle in base mesh - returned -1! Error");
                  }
                }
-               bCornerForVertex = (baseMesh.v(3*triangle) == island1) ? 3*triangle : (baseMesh.v(3*triangle+1) == island1) ? 3*triangle+1 : 3*triangle+2;
+               bCornerForVertex = (m_channelExpansionManager.islandForCorner(3*triangle) == island1) ? 3*triangle : (m_channelExpansionManager.islandForCorner(3*triangle+1) == island1) ? 3*triangle+1 : 3*triangle+2;
              }
              
              if ( bTrackedC2 != -1 )
              {
                if ( fTriangleAdded )
                {
-                 addOppositeForUnusedIsland( baseMesh.nc-1, baseMesh.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
+                 addOppositeForUnusedIsland( m_channelExpansionManager.nc-1, m_channelExpansionManager.nc-2, bTrackedC2, bTrackedC3, nextUsedIsland, triangleStripCurrent );
                  triangleStripCurrent = new ArrayList<Boolean>();
                }
                else
@@ -1412,8 +1418,8 @@ class IslandMesh extends Mesh
              {
                if ( fTriangleAdded )
                {
-                 bFirstC2 = baseMesh.nc-2;
-                 bFirstC3 = baseMesh.nc-1;
+                 bFirstC2 = m_channelExpansionManager.nc-2;
+                 bFirstC3 = m_channelExpansionManager.nc-1;
                }
                else
                {
@@ -1425,8 +1431,8 @@ class IslandMesh extends Mesh
                    
              if ( fTriangleAdded )
              {
-               bTrackedC2 = baseMesh.nc-2;
-               bTrackedC3 = baseMesh.nc-1;                 
+               bTrackedC2 = m_channelExpansionManager.nc-2;
+               bTrackedC3 = m_channelExpansionManager.nc-1;                 
              }
              else
              {
@@ -1783,17 +1789,17 @@ class IslandMesh extends Mesh
      {
        if ( DEBUG && DEBUG_MODE >= VERBOSE )
        {
-         print("AddOppositeForUnused " + baseMesh.v(bc2) + " " + baseMesh.v(bc3) + " " + baseMesh.v(btrackedc2) + " " + baseMesh.v(btrackedc3) + " " + nextUsedIsland + "\n");
+         print("AddOppositeForUnused " + m_channelExpansionManager.islandForCorner(bc2) + " " + m_channelExpansionManager.islandForCorner(bc3) + " " + m_channelExpansionManager.islandForCorner(btrackedc2) + " " + m_channelExpansionManager.islandForCorner(btrackedc3) + " " + nextUsedIsland + "\n");
        }
      }
 
      int corner1 = -1, corner2 = -1;
 
-     if ( baseMesh.v( bc2 ) == nextUsedIsland )
+     if ( m_channelExpansionManager.islandForCorner( bc2 ) == nextUsedIsland )
      {
        corner1 = bc3;
      }
-     else if ( baseMesh.v( bc3 ) == nextUsedIsland )
+     else if ( m_channelExpansionManager.islandForCorner( bc3 ) == nextUsedIsland )
      {
        corner1 = bc2;
      }
@@ -1805,11 +1811,11 @@ class IslandMesh extends Mesh
        }
      }
      
-     if ( baseMesh.v( btrackedc2 ) == nextUsedIsland )
+     if ( m_channelExpansionManager.islandForCorner( btrackedc2 ) == nextUsedIsland )
      {
        corner2 = btrackedc3;
      }
-     else if ( baseMesh.v( btrackedc3 ) == nextUsedIsland )
+     else if ( m_channelExpansionManager.islandForCorner( btrackedc3 ) == nextUsedIsland )
      {
        corner2 = btrackedc2;
      }
@@ -1823,10 +1829,10 @@ class IslandMesh extends Mesh
 
      if ( m_numAdvances == -1 || m_currentAdvances == m_numAdvances-1 )
      {
-       baseMesh.O[ corner1 ] = corner2;
-       baseMesh.O[ corner2 ] = corner1;
+       baseMesh.O[corner1] = corner2;
+       baseMesh.O[corner2] = corner1;
      
-       if ( baseMesh.m_triangleStrips[ corner1 ] == null )
+       if ( m_channelExpansionManager.triangleStripForCorner( corner1 ) == null )
        {
          if ( DEBUG && DEBUG_MODE >= LOW && (m_numAdvances != -1 ) )
          {
@@ -1845,9 +1851,9 @@ class IslandMesh extends Mesh
              print (triangleStrip.get(i) + " ");
            }          
          }
-         ChannelExpansion channelExpansion = new ChannelExpansion( triangleStrip );
-         baseMesh.m_triangleStrips[ corner2 ] = channelExpansion;
-         baseMesh.m_triangleStrips[ corner1 ] = channelExpansion.reverse();
+         ChannelExpansionTriangleStrip channelExpansion = new ChannelExpansionTriangleStrip( triangleStrip );
+         m_channelExpansionManager.setTriangleStrip( corner2, channelExpansion );
+         m_channelExpansionManager.setTriangleStrip( corner1, channelExpansion.reverse() );
        }
        else
        {
