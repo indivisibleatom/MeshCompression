@@ -745,16 +745,16 @@ class BaseMesh extends Mesh
                 }
                 m_beachEdgesExpanded++;
 
+
                 ArrayList<Boolean> triangleStripList = m_channelExpansionManager.triangleStripForCorner( n(currentCorner) ).expansion();
                 boolean flip = false;
-                print("Here " + baseV(currentCorner) + " " + baseV(p(currentCorner)) + "\n");
                 if ( baseV(p(currentCorner)) < baseV(currentCorner ) ) //If the current island number is less than the other island number, no need to invert triangle strip
                 {
                   flip = true;
                 }
                 if ( m_dualExpansionState == null )
                 {
-                  m_dualExpansionState = new StepWiseDualExpansionState( m_channelExpansionManager.hookForCorner(currentCorner), m_channelExpansionManager.hookForCorner(nextS), -1, currentCorner, 0 );
+                  m_dualExpansionState = new StepWiseDualExpansionState( m_channelExpansionManager.hookForCorner(currentCorner), m_channelExpansionManager.hookForCorner(p(currentCorner)), -1, currentCorner, 0 );
                 }
                 walkAndExpandBothStepWise( m_channelExpansionManager.hookForCorner(currentCorner), m_channelExpansionManager.hookForCorner(nextS), vertexNumber, maxVertexNum, m_channelExpansionManager.hookForCorner(p(currentCorner)), m_channelExpansionManager.hookForCorner(unswingBase(p(currentCorner))), baseV(p(currentCorner)), triangleStripList, flip, currentCorner );
                 if ( m_beachEdgesExpanded > m_beachEdgesToExpand )
@@ -772,7 +772,7 @@ class BaseMesh extends Mesh
             {
               if ( m_beachEdgesExpanded == m_beachEdgesToExpand )
               {
-                print("Expanding water vertex \n");
+                print("Expanding water vertex " + currentCorner + "\n");
                 adjustOppositesOnExpansion( currentCorner );
                 V[currentCorner] = m_expansionIndex[vertexNumber] + m_channelExpansionManager.hookForCorner(currentCorner); //Set the vertex of the junction triangle to the expansion island's hook vertex
                 if ( currentCorner != initCorner && O[3*nt-2] == -1)
@@ -784,7 +784,7 @@ class BaseMesh extends Mesh
               m_beachEdgesExpanded++;
               if ( m_beachEdgesToExpand == m_beachEdgesExpanded )
               {
-                if ( DEBUG && DEBUG_MODE >= VERBOSE )
+                if ( DEBUG && DEBUG_MODE >= LOW )
                 {
                   print("Walk and expand " + m_channelExpansionManager.hookForCorner(currentCorner) + " " + m_channelExpansionManager.hookForCorner(nextS) + " " + vertexNumber + " " + v(p(currentCorner)) + " " + maxVertexNum + "\n");
                 }
