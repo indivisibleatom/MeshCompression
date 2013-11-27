@@ -61,6 +61,7 @@ class BaseMesh extends Mesh
   int m_expandedIsland;
   int[] m_expansionIndex = new int [numIslands];   // is an island expanded?
   int[] m_expansionIndexVTable = new int [numIslands]; //stores the index of the first entry in the V table for the island
+  int[] m_numTrianglesVTable = new int [numIslands]; //stores the number of triangles for the island in the V table for the island. TODO msati3: Can you remove this?
   
   int[] m_shiftedOpposites = new int[3*maxnt];       // store the original opposites corners for each junction triangle at each time one of the incident islands is expanded
   int[] m_shiftedVertices = new int[3*maxnt];        // store the original base vertex numbers for each junction triangle at each time one of the incident islands is expanded
@@ -88,6 +89,7 @@ class BaseMesh extends Mesh
     {
       m_expansionIndex[i] = -1;
       m_expansionIndexVTable[i] = -1;
+      m_numTrianglesVTable[i] = 5;
     }
     
     for (int i = 0; i < 3*maxnt; i++)
@@ -907,6 +909,7 @@ class BaseMesh extends Mesh
           print("Expand edge hook " + currentLocalVertNum + " next local vert " + nextLocalVertNum + "\n");
         }
         addTriangle( m_expansionIndex[currentIsland] + nextLocalVertNum, m_expansionIndex[currentIsland] + currentLocalVertNum, nextIsland );
+        m_numTrianglesVTable[currentIsland]++;
         addOppositesAndUpdateCornerForChannel( cornerIsland, cornerLastChannelFan, cornerJunction );
         tm[nt-1] = type;
       }
@@ -969,7 +972,7 @@ class BaseMesh extends Mesh
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
           addTriangle( m_expansionIndex[currentIsland] + nextLocalVertex, m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
-          print("Adding triangle " + (m_expansionIndex[currentIsland] + nextLocalVertex) + " " + (m_expansionIndex[currentIsland] + currentVertexOffset1) + " " + m_expansionIndex[nextIsland] + currentVertexOffset2 + "\n");
+          m_numTrianglesVTable[currentIsland]++;
 
           //Cache the corner got to by swinging for later use
           if (origNextSwingCorner == -1)
@@ -1056,6 +1059,7 @@ class BaseMesh extends Mesh
 
         int nextLocalVertex = getHookFromVertexNumber( v(n(prevCorner)), m_expansionIndex[currentIsland] );
         addTriangle( m_expansionIndex[currentIsland] + nextLocalVertex, m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
+        m_numTrianglesVTable[currentIsland]++;
         print("Adding triangle " + (m_expansionIndex[currentIsland] + nextLocalVertex) + " " + (m_expansionIndex[currentIsland] + currentVertexOffset1) + " " + m_expansionIndex[nextIsland] + currentVertexOffset2 + "\n");
 
         //Cache the corner got to by swinging for later use
@@ -1096,6 +1100,38 @@ class BaseMesh extends Mesh
       }
       m_beachEdgesExpanded++;
     }
+  }
+  
+  void onContractIsland()
+  {
+    int vertex = baseV(cc);
+    //TODO msati3: Compaction?
+    for (int i = m_expansionIndex[vertex]; i < nv - ISLAND_SIZE - 2; i++)
+    {
+      G[i] = G[i + ISLAND_SIZE + 2];
+    }
+    nv -= (ISLAND_SIZE + 2);
+    
+    print("Number of triangles with island " + m_numTrianglesVTable[vertex] + "\n");
+
+    for (int i = 0; i < 3*nt; i++)
+    {
+      if ( (V[i] >= m_expansionIndex[vertex]) && (V[i] < m_expansionIndex[vertex] + ISLAND_SIZE + 2) )
+      {
+        V[i] = vertex;
+      }
+    }
+    
+    for (int i = m_expansionIndexVTable[vertex]; i < 3*nt - 3*m_numTrianglesVTable[vertex]; i++)
+    {
+      V[i] = V[i + m_numTrianglesVTable[vertex]];
+      O[i] = O[i + m_numTrianglesVTable[vertex]];
+    }
+    nt -= m_numTrianglesVTable[vertex];  
+
+    m_expansionIndex[vertex] = -1;
+    m_expansionIndexVTable[vertex] = -1;
+    m_numTrianglesVTable[vertex] = 5;
   }
   
   void draw()

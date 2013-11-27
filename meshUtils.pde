@@ -120,6 +120,11 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
          m_mesh.pickc(Pick()); // sets M.sc to the closest corner in M from the pick point
          m_mesh.onExpandIsland();
        }
+       if (keyPressed&&key=='n')
+       {
+         m_mesh.pickc(Pick()); // sets M.sc to the closest corner in M from the pick point
+         m_mesh.onContractIsland();
+       }
     }
     
     //Debug
