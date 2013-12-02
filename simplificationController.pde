@@ -18,7 +18,7 @@ class SimplificationController
   m_islandMesh.resetMarkers(); // resets vertex and tirangle markers
   m_islandMesh.computeBox();
   m_viewportManager.registerMeshToViewport( m_islandMesh, 0 );
-  for(int i=0; i<10; i++) vis[i]=true; // to show all types of triangles
+  for(int i=0; i<20; i++) vis[i]=true; // to show all types of triangles
  }
  
  ViewportManager viewportManager()

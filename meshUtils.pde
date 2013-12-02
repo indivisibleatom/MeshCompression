@@ -148,6 +148,12 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
     if(keyPressed&&key == 'C') {
       m_mesh.onSwingBase();
     }
+    if(keyPressed&&key == '0') {
+     m_mesh.explodeExpand();
+    }
+    if(keyPressed&&key == '1') {
+      m_mesh.explodeExpandWithIsland();
+    }
   }
 }
 

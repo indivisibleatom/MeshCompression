@@ -187,7 +187,14 @@ class BaseMesh extends Mesh
       print("Adding triangle withoffset " + (baseOffset + v1) + " " + (baseOffset + v2) + " " + (baseOffset + v3) + "\n");
     }
     addTriangle( baseOffset + v1, baseOffset + v2, baseOffset + v3 );
-    tm[nt-1] = type;
+    if (numTimes == 1)
+    {
+      tm[nt-1] = type;
+    }
+    else
+    {
+      tm[nt-1] = type + 10;
+    }
   }
   
   private int getNext( int v )
@@ -607,8 +614,10 @@ class BaseMesh extends Mesh
     }
   }
   
+  int numTimes = 0;
   void onExpandIsland()
   {
+    numTimes = numTimes == 0 ? 1 : 2;
     m_beachEdgesToExpand = -1;
     m_beachEdgesExpanded = -1;
 
@@ -911,7 +920,7 @@ class BaseMesh extends Mesh
         addTriangle( m_expansionIndex[currentIsland] + nextLocalVertNum, m_expansionIndex[currentIsland] + currentLocalVertNum, nextIsland );
         m_numTrianglesVTable[currentIsland]++;
         addOppositesAndUpdateCornerForChannel( cornerIsland, cornerLastChannelFan, cornerJunction );
-        tm[nt-1] = type;
+        tm[nt-1] = type + (numTimes-1)*10;
       }
       cornerLastChannelFan = 3*nt - 2; //TODO msati3: Move to the main API
       i = nextLocalVertNum < i ? nextLocalVertNum + maxVertexNum : nextLocalVertNum;
@@ -991,7 +1000,7 @@ class BaseMesh extends Mesh
           O[3*nt-3] = n(currentCornerOnFan);
           O[n(currentCornerOnFan)] = 3*nt-3;
 
-          tm[nt-1] = CHANNEL;
+          tm[nt-1] = CHANNEL + (numTimes-1)*10;
         }
 
         currentVertexOffset1 = nextLocalVertex;      
@@ -1010,6 +1019,7 @@ class BaseMesh extends Mesh
         if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
         {
           V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
+          tm[t(currentCornerOnFan)] += (numTimes-1)*10;
           origNextSwingCorner = -1;
         }
         print("Here " + v(p(currentCornerOnFan)) + " " + nextIsland + "\n" );
@@ -1132,6 +1142,36 @@ class BaseMesh extends Mesh
     m_expansionIndex[vertex] = -1;
     m_expansionIndexVTable[vertex] = -1;
     m_numTrianglesVTable[vertex] = 5;
+  }
+  
+  void explodeExpand()
+  {
+    for (int i = 0; i < nt; i++)
+    {
+      if ( ( tm[i] == CHANNEL + 10*(numTimes-1) ) || ( tm[i] == LAGOON + 10*(numTimes-1) ) || ( tm[i] == ISLAND + 10*(numTimes-1) ) || ( tm[i] == CAP + 10*(numTimes-1) ) )
+      {
+        visible[i] = false;
+      }
+      else
+      {
+        visible[i] = true;
+      }
+    }
+  }
+  
+  void explodeExpandWithIsland()
+  {
+    for (int i = 0; i < nt; i++)
+    {
+      if (tm[i] == (numTimes-1)*10 + CHANNEL || tm[i] == (numTimes-1)*10 + CAP)
+      {
+        visible[i] = false;
+      }
+      else
+      {
+        visible[i] = true;
+      }
+    }
   }
   
   void draw()

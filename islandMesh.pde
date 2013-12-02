@@ -9,6 +9,17 @@ int JUNCTION = 6;
 int CAP = 7;
 int ISLAND = 9;
 
+//For the second case
+int TSPLIT = 11;
+int TGATE = 12;
+int TCHANNEL = 13;
+int TWATER = 18; //Water before forming islands
+int TISOLATEDWATER = 14;
+int TLAGOON = 15;
+int TJUNCTION = 16;
+int TCAP = 17;
+int TISLAND = 19;
+
 class STypeTriangleState
 {
   private int m_corner1;
@@ -1991,7 +2002,7 @@ class IslandMesh extends Mesh
        numNormalVerts++;
      }
    }
-   if ( DEBUG && DEBUG_MODE >= VERBOSE )
+   if ( DEBUG && DEBUG_MODE >= LOW )
    {
      print("\nStats : Total " + nt + " Land " + countLand + " Good water " + countGood + " Island separators " + countSeparator + " Lagoons " + countLagoons + " Bad water " + countBad + "Num Water Verts " + numWaterVerts);
    }

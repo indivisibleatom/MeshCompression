@@ -117,14 +117,14 @@ class Viewport
                  m.loadMeshOBJ(); // M.loadMesh(); 
                  m.updateON();   m.resetMarkers();
                  m.computeBox();
-                 for(int i=0; i<10; i++) vis[i]=true;
+                 for(int i=0; i<20; i++) vis[i]=true;
                  registerMesh(m);
                 }
     if(key=='M') {Mesh m = new Mesh();
                  m.loadMeshVTS(); 
                  m.updateON();   m.resetMarkers();
                  m.computeBox();
-                 for(int i=0; i<10; i++) vis[i]=true;
+                 for(int i=0; i<20; i++) vis[i]=true;
                  registerMesh(m);
                  }
     if(key=='?') {showHelpText=!showHelpText;} 

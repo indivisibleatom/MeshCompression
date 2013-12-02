@@ -6,7 +6,7 @@ String [] fn= {
 };
 int fni=0; 
 int fniMax=fn.length; // file names for loading meshes
-Boolean [] vis = new Boolean [10]; 
+Boolean [] vis = new Boolean [20]; 
 Boolean onTriangles=true, onEdges=true; // projection control
 
 class DrawingState
@@ -852,6 +852,18 @@ class Mesh {
       if (tm[t]==7) fill(#FAAFBA, opacity); 
       if (tm[t]==8) fill(blue, opacity); 
       if (tm[t]==9) fill(yellow, opacity); 
+      
+      if (tm[t]==10) fill(red, opacity); 
+      if (tm[t]==11) fill(brown, opacity); 
+      if (tm[t]==12) fill(orange, opacity); 
+      if (tm[t]==13) fill(cyan, opacity); 
+      if (tm[t]==14) fill(magenta, opacity); 
+      if (tm[t]==15) fill(green, opacity); 
+      if (tm[t]==16) fill(blue, opacity); 
+      if (tm[t]==17) fill(#FAAFBA, opacity); 
+      if (tm[t]==18) fill(blue, opacity); 
+      if (tm[t]==19) fill(yellow, opacity); 
+      
       if (vis[tm[t]]) {
         if (m_drawingState.m_shrunk != 0) showShrunkT(t, m_drawingState.m_shrunk); 
         else shade(t);
