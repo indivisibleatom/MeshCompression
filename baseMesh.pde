@@ -1,6 +1,6 @@
 //int numTimes = 0; //Flag for producing drawings. Enable when producing drawings
 int numTimes = 1;
-int NUM_CONTRACTIONS = 1;
+int NUM_CONTRACTIONS = 100;
 
 class STypeTriangleStateV
 {
@@ -1173,18 +1173,18 @@ class BaseMesh extends Mesh
     if ( island == -1 )
       return;
     cc = -1;
-   
-    int startCornerIsland = m_expansionIndexVTable[island];
-    int currentCornerIsland = startCornerIsland;
-    int initTrackedCorner = -1;
-    int trackedCorner = -1;
     
     if ( m_numTimesContracted >= NUM_CONTRACTIONS )
     {
       compactBaseMesh();
       m_numTimesContracted = 0;
     }
-    
+   
+    int startCornerIsland = m_expansionIndexVTable[island];
+    int currentCornerIsland = startCornerIsland;
+    int initTrackedCorner = -1;
+    int trackedCorner = -1;
+       
     do
     {
       int currentCorner = currentCornerIsland;
@@ -1258,7 +1258,17 @@ class BaseMesh extends Mesh
     }
     m_expansionIndexVTable[island] = -1;
     m_expansionIndex[island] = -1;
+    m_numTrianglesVTable[island] = 5;
     
+    int currentCorner = cc;
+    do
+    {
+      m_shiftedVertices[currentCorner] = -1;
+      m_shiftedOpposites[currentCorner] = -1;
+      currentCorner = s(currentCorner);
+    } while (currentCorner != cc );
+    
+    print("Contracted \n");
     m_numTimesContracted++;
   }
 
@@ -1295,12 +1305,12 @@ class BaseMesh extends Mesh
   void compactBaseMesh()
   {
     print("Before compaction - vertices " + nv + " triangles " + nt + "\n");
-    int getIndex = m_initSize;
-    int putIndex = m_initSize;
+    int getIndex = 0;
+    int putIndex = 0;
     
     int VMapping[] = new int[3*nt]; //The mapping of old corners to new corners
     int GMapping[] = new int[nv];
-    for (int i = m_initSize; i < nv; i++)
+    for (int i = 0; i < nv; i++)
     {
       if ( G[i] != null )
       {
@@ -1322,6 +1332,10 @@ class BaseMesh extends Mesh
       {
         VMapping[getIndex] = putIndex;
         V[putIndex] = V[getIndex];
+        if (putIndex%3 == 0)
+        {
+          tm[putIndex] = tm[getIndex];
+        }
         O[putIndex++] = O[getIndex++];
       }
       else
@@ -1332,6 +1346,8 @@ class BaseMesh extends Mesh
     nt = putIndex / 3;
     for (int i = 0; i < 3*nt; i++)
     {
+      print("Old V " + V[i] + " New V " + GMapping[V[i]] + "\n");
+      print("Old O " + O[i] + " New V " + VMapping[O[i]] + "\n");
       V[i] = GMapping[V[i]];
       O[i] = VMapping[O[i]];
     }
