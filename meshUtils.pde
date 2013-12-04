@@ -37,6 +37,9 @@ class MeshUtils
 class MeshUserInputHandler
 {
   private Mesh m_mesh;
+  protected boolean m_fKeyEntryMode;
+  protected String m_command;
+
   
   MeshUserInputHandler(Mesh m)
   {
@@ -92,7 +95,39 @@ class MeshUserInputHandler
     if (key == 'f') { m_mesh.getDrawingState().m_fPickingBack=false; m_mesh.getDrawingState().m_fTranslucent = false; println("picking on the front");}
     if (key == 'g') { m_mesh.flatShading=!m_mesh.flatShading; }
     if (key == '-') { m_mesh.getDrawingState().m_fShowEdges=!m_mesh.getDrawingState().m_fShowEdges; if (m_mesh.getDrawingState().m_fShowEdges) m_mesh.getDrawingState().m_shrunk=1; else m_mesh.getDrawingState().m_shrunk=0; }
-
+    
+    if (key==':')
+    {
+      m_fKeyEntryMode = true;
+      m_command = "";
+    }
+    else if (m_fKeyEntryMode)
+    {
+      if (key == ENTER || key == RETURN)
+      {
+        interpretCommand( m_command );
+        m_fKeyEntryMode = false;
+      }
+      else
+      {
+        m_command += key;
+      }
+    }
+  }
+ 
+  public int getNumberFromCommand( String command, int indexBegin )
+  {
+    String desiredPart = command.substring( indexBegin );
+    return Integer.parseInt( desiredPart );
+  }
+  
+  public void interpretCommand( String command )
+  {
+    switch( command.charAt(0) )
+    {
+      case 'c': m_mesh.cc = getNumberFromCommand(command, 1);
+        break;
+    }
   }
   
   public void interactSelectedMesh()
@@ -158,10 +193,10 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
     if(keyPressed&&key == 'C') {
       m_mesh.onSwingBase();
     }
-    if(keyPressed&&key == '0') {
+    if(keyPressed&&key == '(') {
      m_mesh.explodeExpand();
     }
-    if(keyPressed&&key == '1') {
+    if(keyPressed&&key == ')') {
       m_mesh.explodeExpandWithIsland();
     }
   }
@@ -170,8 +205,6 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
 class IslandMeshUserInputHandler extends MeshUserInputHandler
 {
   private IslandMesh m_mesh;
-  private boolean m_fKeyEntryMode;
-  private String m_command;
   
   IslandMeshUserInputHandler( IslandMesh m )
   {
@@ -180,19 +213,12 @@ class IslandMeshUserInputHandler extends MeshUserInputHandler
     m_fKeyEntryMode = false;
   }
   
-  private int getNumberFromCommand( String command, int indexBegin )
+  public void interpretCommand( String command )
   {
-    String desiredPart = command.substring( indexBegin );
-    return Integer.parseInt( desiredPart );
-  }
-  
-  private void interpretCommand( String command )
-  {
+    super.interpretCommand(command);
     switch( command.charAt(0) )
     {
       case 'z': m_mesh.selectIsland(getNumberFromCommand(command, 1));
-        break;
-      case 'c': m_mesh.cc = getNumberFromCommand(command, 1);
         break;
     }
   }

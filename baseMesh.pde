@@ -1163,6 +1163,7 @@ class BaseMesh extends Mesh
   
   void onContractIsland()
   {
+    int time = 0;
     int vertex = v(cc);
     //TODO msati3: Compaction?
     
@@ -1207,14 +1208,25 @@ class BaseMesh extends Mesh
           }
         }
         currentCorner = s(currentCorner);
-        if ( belongsToIsland(v(n(currentCorner)), island) && (nextCorner == -1) && ( v(n(currentCorner)) != prevVertex ) )
+        if ( belongsToIsland(v(n(currentCorner)), island) && (nextCorner == -1) )
         {
-          prevVertex = v(currentCorner);
-          nextCorner = n(currentCorner);
+          if ( v(n(currentCorner)) != prevVertex )
+          {
+            prevVertex = v(currentCorner);
+            nextCorner = n(currentCorner);
+          }
+          else
+          {
+            if ( belongsToIsland(v(p(currentCorner)), island) )
+            {
+              prevVertex = v(p(currentCorner));
+            }
+          }
         }
       } while (currentCorner != currentCornerIsland);
+      time++;
       currentCornerIsland = nextCorner;
-    } while ( currentCornerIsland != startCornerIsland );
+    } while ( v(currentCornerIsland) != v(startCornerIsland) );
     O[trackedCorner] = p(initTrackedCorner);
     O[p(initTrackedCorner)] = trackedCorner;
     
