@@ -1031,23 +1031,28 @@ class BaseMesh extends Mesh
           addTriangle( m_expansionIndex[currentIsland] + nextLocalVertex, m_expansionIndex[currentIsland] + currentVertexOffset1, m_expansionIndex[nextIsland] + currentVertexOffset2 );
           m_numTrianglesVTable[currentIsland]++;
 
-          //Cache the corner got to by swinging for later use
+          //Fixup opposites between channel and junction triangles
           if (origNextSwingCorner == -1)
           {
+            //Cache the corner got to by swinging for later use
             origNextSwingCorner = s(currentCornerOnFan);
+            O[3*nt-2] = o(n(currentCornerOnFan));
+            O[o(n(currentCornerOnFan))] = 3*nt-2;
+            O[3*nt-3] = n(currentCornerOnFan);
+            O[n(currentCornerOnFan)] = 3*nt-3;
+          }
+          else
+          {
+            O[3*nt-2] = O[3*nt-5];
+            O[O[3*nt-2]] = 3*nt-2;
+            O[3*nt-5] = 3*nt-3;
+            O[3*nt-3] = 3*nt-5;
           }
 
           //Set opposite of the beach edge and added triangle
           O[p(prevCorner)] = 3*nt-1;
           O[3*nt-1] = p(prevCorner);
           
-          //Fixup opposites between channel and junction triangles
-          
-          O[3*nt-2] = o(n(currentCornerOnFan));
-          O[o(n(currentCornerOnFan))] = 3*nt-2;
-          O[3*nt-3] = n(currentCornerOnFan);
-          O[n(currentCornerOnFan)] = 3*nt-3;
-
           tm[nt-1] = CHANNEL + (numTimes-1)*10;
         }
 
@@ -1064,13 +1069,9 @@ class BaseMesh extends Mesh
         {
           currentCornerOnFan = origNextSwingCorner;
         }
-        if ( m_beachEdgesToExpand == -1 || m_beachEdgesToExpand == m_beachEdgesExpanded )
-        {
-          V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
-          tm[t(currentCornerOnFan)] += (numTimes-1)*10;
-          origNextSwingCorner = -1;
-        }
-        print("Here " + v(p(currentCornerOnFan)) + " " + nextIsland + "\n" );
+        V[currentCornerOnFan] = m_expansionIndex[currentIsland] + currentVertexOffset1;
+        tm[t(currentCornerOnFan)] += (numTimes-1)*10;
+        origNextSwingCorner = -1;
         currentVertexOffset2 = getHookFromVertexNumber( v(p(currentCornerOnFan)), m_expansionIndex[nextIsland] );
       }
       m_beachEdgesExpanded++;
@@ -1177,7 +1178,7 @@ class BaseMesh extends Mesh
     do
     {
       int currentCorner = currentCornerIsland;
-      if ( DEBUG && DEBUG_MODE >= VERBOSE )
+      if ( DEBUG && DEBUG_MODE >= LOW )
       {
         print("Current corner " + currentCorner + "\n");
       }
@@ -1188,7 +1189,7 @@ class BaseMesh extends Mesh
         if ( !belongsToIsland(v(n(currentCorner)), island) && !belongsToIsland(v(p(currentCorner)), island) )
         {
           if ( cc == -1 ) { cc = currentCorner; }
-          if ( DEBUG && DEBUG_MODE >= VERBOSE )
+          if ( DEBUG && DEBUG_MODE >= LOW )
           {
             print("Setting opposite " + currentCorner + "\n");
           }
