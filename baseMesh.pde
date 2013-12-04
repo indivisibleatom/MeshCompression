@@ -1,6 +1,6 @@
 //int numTimes = 0; //Flag for producing drawings. Enable when producing drawings
 int numTimes = 1;
-int NUM_CONTRACTIONS = 100;
+int NUM_CONTRACTIONS = 10000;
 
 class STypeTriangleStateV
 {
@@ -708,6 +708,7 @@ class BaseMesh extends Mesh
                 {
                   flip = true;
                 }
+                print("Both\n");
                 walkAndExpandBoth( m_channelExpansionManager.hookForCorner(currentCorner), m_channelExpansionManager.hookForCorner(nextS), vertexNumber, maxVertexNum, m_channelExpansionManager.hookForCorner(p(currentCorner)), m_channelExpansionManager.hookForCorner(unswingBase(p(currentCorner))), baseV(p(currentCorner)), triangleStripList, flip, currentCorner );
               }
             }
@@ -985,6 +986,12 @@ class BaseMesh extends Mesh
     cc=swingBase(cc); 
   }
   
+  void onUnswingBase()
+  {
+    pc=cc;
+    cc=unswingBase(cc);
+  }
+  
   private void walkAndExpandBoth( int startHook, int endHook, int currentIsland, int maxVertexNum, int startHookOther, int endHookOther, int nextIsland, ArrayList<Boolean> triangleStripList, boolean flip, int currentCorner )
   {
     int currentVertexOffset1 = startHook;
@@ -1260,14 +1267,14 @@ class BaseMesh extends Mesh
     m_expansionIndex[island] = -1;
     m_numTrianglesVTable[island] = 5;
     
-    int currentCorner = cc;
+    /*(int currentCorner = cc;
     do
     {
       m_shiftedVertices[currentCorner] = -1;
       m_shiftedOpposites[currentCorner] = -1;
-      currentCorner = s(currentCorner);
+      currentCorner = swingBase(currentCorner);
     } while (currentCorner != cc );
-    
+    */
     print("Contracted \n");
     m_numTimesContracted++;
   }
