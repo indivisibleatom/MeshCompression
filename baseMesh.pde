@@ -1,5 +1,6 @@
 //int numTimes = 0; //Flag for producing drawings. Enable when producing drawings
 int numTimes = 1;
+int NUM_CONTRACTIONS = 1;
 
 class STypeTriangleStateV
 {
@@ -79,6 +80,7 @@ class BaseMesh extends Mesh
   StepWiseDualExpansionState m_dualExpansionState;
   
   int m_initSize;
+  int m_numTimesContracted = 0;
   
   BaseMesh()
   {
@@ -1176,10 +1178,17 @@ class BaseMesh extends Mesh
     int currentCornerIsland = startCornerIsland;
     int initTrackedCorner = -1;
     int trackedCorner = -1;
+    
+    if ( m_numTimesContracted >= NUM_CONTRACTIONS )
+    {
+      compactBaseMesh();
+      m_numTimesContracted = 0;
+    }
+    
     do
     {
       int currentCorner = currentCornerIsland;
-      if ( DEBUG && DEBUG_MODE >= LOW )
+      if ( DEBUG && DEBUG_MODE >= VERBOSE )
       {
         print("Current corner " + currentCorner + "\n");
       }
@@ -1190,7 +1199,7 @@ class BaseMesh extends Mesh
         if ( !belongsToIsland(v(n(currentCorner)), island) && !belongsToIsland(v(p(currentCorner)), island) )
         {
           if ( cc == -1 ) { cc = currentCorner; }
-          if ( DEBUG && DEBUG_MODE >= LOW )
+          if ( DEBUG && DEBUG_MODE >= VERBOSE )
           {
             print("Setting opposite " + currentCorner + "\n");
           }
@@ -1243,8 +1252,14 @@ class BaseMesh extends Mesh
         break;
       }
     }
+    for (int i = m_expansionIndex[island]; i < m_expansionIndex[island] + VERTICES_PER_ISLAND ; i++)
+    {
+      G[i] = null;
+    }
     m_expansionIndexVTable[island] = -1;
     m_expansionIndex[island] = -1;
+    
+    m_numTimesContracted++;
   }
 
   void explodeExpand()
@@ -1277,6 +1292,64 @@ class BaseMesh extends Mesh
     }
   }
   
+  void compactBaseMesh()
+  {
+    print("Before compaction - vertices " + nv + " triangles " + nt + "\n");
+    int getIndex = m_initSize;
+    int putIndex = m_initSize;
+    
+    int VMapping[] = new int[3*nt]; //The mapping of old corners to new corners
+    int GMapping[] = new int[nv];
+    for (int i = m_initSize; i < nv; i++)
+    {
+      if ( G[i] != null )
+      {
+        GMapping[getIndex] = putIndex;
+        G[putIndex++] = G[getIndex++];
+      }
+      else
+      {
+        getIndex++;
+      }
+    }
+    nv = putIndex;
+
+    getIndex = 0;
+    putIndex = 0;
+    for (int i = 0; i < 3*nt; i++)
+    {
+      if ( V[i] != -1 )
+      {
+        VMapping[getIndex] = putIndex;
+        V[putIndex] = V[getIndex];
+        O[putIndex++] = O[getIndex++];
+      }
+      else
+      {
+        getIndex++;
+      }
+    }
+    nt = putIndex / 3;
+    for (int i = 0; i < 3*nt; i++)
+    {
+      V[i] = GMapping[V[i]];
+      O[i] = VMapping[O[i]];
+    }
+    
+    for (int i = 0; i < numIslands; i++)
+    {
+      if ( m_expansionIndex[i] != -1 )
+      {
+        m_expansionIndex[i] = GMapping[m_expansionIndex[i]];
+      }
+      if ( m_expansionIndexVTable[i] != -1 )
+      {
+        m_expansionIndexVTable[i] = VMapping[m_expansionIndexVTable[i]];
+      }
+    }
+    print("After compaction - vertices " + nv + " triangles " + nt + "\n");
+  }
+ 
   void draw()
   {
     super.draw();
