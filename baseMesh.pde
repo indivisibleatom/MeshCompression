@@ -61,7 +61,6 @@ class StepWiseDualExpansionState
 
 class BaseMesh extends Mesh
 {
-  int m_expandedIsland;
   int[] m_expansionIndex = new int [numIslands];   // is an island expanded?
   int[] m_expansionIndexVTable = new int [numIslands]; //stores the index of the first entry in the V table for the island
   int[] m_numTrianglesVTable = new int [numIslands]; //stores the number of triangles for the island in the V table for the island. TODO msati3: Can you remove this?
@@ -72,12 +71,11 @@ class BaseMesh extends Mesh
   IslandExpansionManager m_expansionManager;
   ChannelExpansionPacketManager m_channelExpansionManager;
 
+  //Debug state.
   int m_beachEdgesToExpand = 0;
   int m_beachEdgesExpanded = 0;
   int m_vertexNumberToExpandStepWise = 0;
   int m_cornerNumberToExpandStepWise = 0;
-  
-  //Debug information
   StepWiseDualExpansionState m_dualExpansionState;
   
   int m_initSize;
@@ -85,7 +83,6 @@ class BaseMesh extends Mesh
   BaseMesh()
   {
     m_userInputHandler = new BaseMeshUserInputHandler(this);
-    m_expandedIsland = -1;
     m_expansionManager = null;
     
     for (int i = 0; i < numIslands; i++)
@@ -137,6 +134,22 @@ class BaseMesh extends Mesh
     return m_shiftedVertices[corner];
   }
   
+  //Get a corner on the base mesh by swinging around the corner
+  private int getBaseMeshCornerForIsland(int corner)
+  {
+    int currentCorner = corner;
+    do
+    {
+      if ( baseV(currentCorner) < m_initSize && baseV(n(currentCorner)) < m_initSize && baseV(p(currentCorner)) < m_initSize )
+      {
+        print("Base mesh corner " + currentCorner + "\n");
+        return currentCorner;
+      }
+      currentCorner = s(currentCorner);
+    } while( currentCorner != corner );
+    return -1;
+  }
+  
   //Given an index of a vertex in a partially expanded mesh, returns the island number for the vertex. Returns -1 if the vertex is to a non-expanded mesh vertex
   private int getIslandForVertex(int vertex)
   {
@@ -144,14 +157,14 @@ class BaseMesh extends Mesh
     {
       if ( (m_expansionIndex[i] != -1) && (vertex >= m_expansionIndex[i]) && (vertex < m_expansionIndex[i] + VERTICES_PER_ISLAND) )
       {
-        if ( DEBUG && DEBUG_MODE >= LOW )
+        if ( DEBUG && DEBUG_MODE >= VERBOSE )
         {
           print ("BaseMesh: getIsland for vertex " + vertex + " " + i + "\n");
         }
         return i;
       }
     }
-    if ( DEBUG && DEBUG_MODE >= LOW )
+    if ( DEBUG && DEBUG_MODE >= VERBOSE )
     {
       print("BaseMesh: getIslandForVertex no island found for vertex " + vertex + "\n");
     }
@@ -622,7 +635,7 @@ class BaseMesh extends Mesh
     m_beachEdgesToExpand = 0;
     m_beachEdgesExpanded = 0;
     m_vertexNumberToExpandStepWise = v(cc);
-    m_cornerNumberToExpandStepWise = cc;
+    m_cornerNumberToExpandStepWise = getBaseMeshCornerForIsland(cc);
   }
   
   void adjustOppositesOnExpansion( int corner )
@@ -645,17 +658,19 @@ class BaseMesh extends Mesh
     //numTimes = numTimes == 0 ? 1 : 2;
     m_beachEdgesToExpand = -1;
     m_beachEdgesExpanded = -1;
-
     if ( m_expansionManager != null )
     {
-      int vertexNumber = v(cc);
+      int corner = getBaseMeshCornerForIsland(cc);
+      if (corner == -1)
+        return;
+      int vertexNumber = v(corner);
       if ( vertexNumber < numIslands ) //If an island
       {
         if ( m_expansionIndex[vertexNumber] == -1 ) //Is not expanded
         {
           int maxVertexNum = VERTICES_PER_ISLAND;
           addIslandGeometry( vertexNumber ); //Expand the island itself
-          int initCorner = cc;
+          int initCorner = corner;
           int currentCorner = initCorner;
           int nextS = -1;
           do
@@ -1147,27 +1162,37 @@ class BaseMesh extends Mesh
   
   void onContractIsland()
   {
-    int vertex = baseV(cc);
+    int vertex = v(cc);
     //TODO msati3: Compaction?
     
-    int island = getIslandForVertex( m_expansionIndex[vertex] );
-    
-    int startCornerIsland = m_expansionIndexVTable[vertex];
+    int island = getIslandForVertex( vertex );
+    if ( island == -1 )
+      return;
+    cc = -1;
+   
+    int startCornerIsland = m_expansionIndexVTable[island];
     int currentCornerIsland = startCornerIsland;
     int initTrackedCorner = -1;
     int trackedCorner = -1;
     do
     {
       int currentCorner = currentCornerIsland;
-      print("Current corner " + currentCorner + "\n");
+      if ( DEBUG && DEBUG_MODE >= VERBOSE )
+      {
+        print("Current corner " + currentCorner + "\n");
+      }
       int nextCorner = -1;
       int prevVertex = v(p(currentCornerIsland));
       do
       {
-        if ( !belongsToIsland(v(n(currentCorner)), vertex) && !belongsToIsland(v(p(currentCorner)), vertex) )
+        if ( !belongsToIsland(v(n(currentCorner)), island) && !belongsToIsland(v(p(currentCorner)), island) )
         {
-          print("Setting opposite " + currentCorner + "\n");
-          V[currentCorner] = vertex;
+          if ( cc == -1 ) { cc = currentCorner; }
+          if ( DEBUG && DEBUG_MODE >= VERBOSE )
+          {
+            print("Setting opposite " + currentCorner + "\n");
+          }
+          V[currentCorner] = island;
           if ( initTrackedCorner == -1 )
           {
             initTrackedCorner = currentCorner;
@@ -1181,7 +1206,7 @@ class BaseMesh extends Mesh
           }
         }
         currentCorner = s(currentCorner);
-        if ( belongsToIsland(v(n(currentCorner)), vertex) && (nextCorner == -1) && ( v(n(currentCorner)) != prevVertex ) )
+        if ( belongsToIsland(v(n(currentCorner)), island) && (nextCorner == -1) && ( v(n(currentCorner)) != prevVertex ) )
         {
           prevVertex = v(currentCorner);
           nextCorner = n(currentCorner);
@@ -1192,9 +1217,9 @@ class BaseMesh extends Mesh
     O[trackedCorner] = p(initTrackedCorner);
     O[p(initTrackedCorner)] = trackedCorner;
     
-    for (int i = m_expansionIndexVTable[vertex]; ; i+=3)
+    for (int i = m_expansionIndexVTable[island]; ; i+=3)
     {
-      if (belongsToIsland(v(i), vertex) || belongsToIsland(v(i+1), vertex) || belongsToIsland(v(i+2), vertex))
+      if (belongsToIsland(v(i), island) || belongsToIsland(v(i+1), island) || belongsToIsland(v(i+2), island))
       {
         V[i] = -1;
         V[i+1] = -1;
@@ -1205,8 +1230,8 @@ class BaseMesh extends Mesh
         break;
       }
     }
-    m_expansionIndexVTable[vertex] = -1;
-    m_expansionIndex[vertex] = -1;
+    m_expansionIndexVTable[island] = -1;
+    m_expansionIndex[island] = -1;
   }
 
   void explodeExpand()

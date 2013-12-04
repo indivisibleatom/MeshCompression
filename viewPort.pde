@@ -61,10 +61,20 @@ class Viewport
       selectedMesh.onMousePressed();
     }
   }
-  
+
+  void onMouseMoved()
+  {
+    Mesh selectedMesh = m_meshInteractor.getSelectedMesh();
+    if (selectedMesh != null)
+    {
+      selectedMesh.onMouseMoved();
+    }
+  }
+ 
   void onMouseDragged()
   {
     Mesh selectedMesh = m_meshInteractor.getSelectedMesh();
+    selectedMesh.onMouseDragged();
     if (selectedMesh != null)
     {
       if(keyPressed&&key=='w') {selectedMesh.add(float(mouseX-pmouseX),I).add(-float(mouseY-pmouseY),J); } // move selected vertex in screen plane

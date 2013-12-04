@@ -2063,6 +2063,14 @@ class Mesh {
   void onMousePressed() {
     m_userInputHandler.onMousePressed();
   }
+  
+  void onMouseDragged() {
+    m_userInputHandler.onMouseDragged();
+  }
+  
+  void onMouseMoved() {
+    m_userInputHandler.onMouseMoved();
+  }
 
   void interactSelectedMesh() {
     m_userInputHandler.interactSelectedMesh();

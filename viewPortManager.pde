@@ -115,6 +115,21 @@ class ViewportManager
     }
   }
   
+  void onMouseMoved()
+  {
+    if (m_selectedViewport != -1)
+    {
+      m_viewports.get(m_selectedViewport).onMouseMoved();
+    }
+    else
+    {
+      if (DEBUG && DEBUG_MODE >= LOW)
+      {
+        print ("ViewportManager::onMouseMoved - no viewport currently selected");
+      }
+    }
+  }
+  
   void onKeyReleased()
   {
     if (m_selectedViewport != -1)

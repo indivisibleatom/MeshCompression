@@ -61,6 +61,10 @@ void mousePressed() {
 void mouseDragged() {
   g_controller.viewportManager().onMouseDragged();
   }
+  
+void mouseMoved() {
+  g_controller.viewportManager().onMouseMoved();
+}
 
 void mouseReleased() {
   }

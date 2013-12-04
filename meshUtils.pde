@@ -49,6 +49,14 @@ class MeshUserInputHandler
      if (keyPressed&&key=='h') {m_mesh.hide(); }  // hide triangle
   }
   
+  public void onMouseDragged()
+  {
+  }
+  
+  public void onMouseMoved()
+  {
+  }
+  
   public void onKeyPress()
   {
     // corner ops for demos
@@ -114,6 +122,8 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
    
   public void interactSelectedMesh()
   {
+    if (keyPressed&&key==' ') { m_mesh.pickc(Pick()); m_mesh.onExpandIsland(); }// sets c to closest corner in M 
+    if (keyPressed&&key=='\'') { m_mesh.pickc(Pick()); m_mesh.onContractIsland(); }// sets c to closest corner in M 
     if(pressed) {
        if (keyPressed&&key=='m')
        {
@@ -138,7 +148,7 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
    
     super.interactSelectedMesh();
   }
-  
+   
   public void onKeyPress()
   {
     super.onKeyPress();
