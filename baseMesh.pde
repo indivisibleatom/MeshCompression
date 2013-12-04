@@ -1,3 +1,6 @@
+//int numTimes = 0; //Flag for producing drawings. Enable when producing drawings
+int numTimes = 1;
+
 class STypeTriangleStateV
 {
   private int m_v1;
@@ -134,6 +137,36 @@ class BaseMesh extends Mesh
     return m_shiftedVertices[corner];
   }
   
+  //Given an index of a vertex in a partially expanded mesh, returns the island number for the vertex. Returns -1 if the vertex is to a non-expanded mesh vertex
+  private int getIslandForVertex(int vertex)
+  {
+    for ( int i = 0; i < numIslands; i++ )
+    {
+      if ( (m_expansionIndex[i] != -1) && (vertex >= m_expansionIndex[i]) && (vertex < m_expansionIndex[i] + VERTICES_PER_ISLAND) )
+      {
+        if ( DEBUG && DEBUG_MODE >= LOW )
+        {
+          print ("BaseMesh: getIsland for vertex " + vertex + " " + i + "\n");
+        }
+        return i;
+      }
+    }
+    if ( DEBUG && DEBUG_MODE >= LOW )
+    {
+      print("BaseMesh: getIslandForVertex no island found for vertex " + vertex + "\n");
+    }
+    return -1;
+  }
+  
+  private boolean belongsToIsland(int vertex, int island)
+  {
+    if ( (m_expansionIndex[island] != -1) && (vertex >= m_expansionIndex[island]) && (vertex < m_expansionIndex[island] + VERTICES_PER_ISLAND) )
+    {
+      return true;
+    }
+    return false;
+  }
+  
   void setInitSize( int nv )
   {
     m_initSize = nv;
@@ -187,14 +220,7 @@ class BaseMesh extends Mesh
       print("Adding triangle withoffset " + (baseOffset + v1) + " " + (baseOffset + v2) + " " + (baseOffset + v3) + "\n");
     }
     addTriangle( baseOffset + v1, baseOffset + v2, baseOffset + v3 );
-    if (numTimes == 1)
-    {
-      tm[nt-1] = type;
-    }
-    else
-    {
-      tm[nt-1] = type + 10;
-    }
+    tm[nt-1] = type + (numTimes - 1)*10;
   }
   
   private int getNext( int v )
@@ -614,10 +640,9 @@ class BaseMesh extends Mesh
     }
   }
   
-  int numTimes = 0;
   void onExpandIsland()
   {
-    numTimes = numTimes == 0 ? 1 : 2;
+    //numTimes = numTimes == 0 ? 1 : 2;
     m_beachEdgesToExpand = -1;
     m_beachEdgesExpanded = -1;
 
@@ -688,8 +713,11 @@ class BaseMesh extends Mesh
           } while (currentCorner != initCorner);
           
           //Populate opposites for the last corner corresponding to the base mesh's junction triangles
-          O[p(currentCorner)] = 3*nt - 2;
-          O[3*nt - 2] = p(currentCorner); 
+          if (O[3*nt-2] == -1)
+          {
+            O[p(currentCorner)] = 3*nt - 2;
+            O[3*nt - 2] = p(currentCorner); 
+          }
         }
       }
     }
@@ -729,6 +757,7 @@ class BaseMesh extends Mesh
                   V[currentCorner] = m_expansionIndex[vertexNumber] + m_channelExpansionManager.hookForCorner(currentCorner); //Set the vertex of the junction triangle to the expansion island's hook vertex
                   if ( currentCorner != initCorner && O[3*nt-2] == -1)
                   {
+                    print("Setting opposite for corner " + p(currentCorner) + "to " + (3*nt-2) + "\n");
                     O[p(currentCorner)] = 3*nt - 2;
                     O[3*nt - 2] = p(currentCorner);
                   }
@@ -788,6 +817,7 @@ class BaseMesh extends Mesh
                 V[currentCorner] = m_expansionIndex[vertexNumber] + m_channelExpansionManager.hookForCorner(currentCorner); //Set the vertex of the junction triangle to the expansion island's hook vertex
                 if ( currentCorner != initCorner && O[3*nt-2] == -1)
                 {
+                  print("Setting opposite for corner " + p(currentCorner) + "to " + (3*nt-2) + "\n");
                   O[p(currentCorner)] = 3*nt - 2;
                   O[3*nt - 2] = p(currentCorner);
                 }
@@ -814,8 +844,11 @@ class BaseMesh extends Mesh
           } while (currentCorner != initCorner);
 
           //Populate opposites for the last corner corresponding to the base mesh's junction triangles
-          O[p(currentCorner)] = 3*nt - 2;
-          O[3*nt - 2] = p(currentCorner); 
+          if (O[3*nt-2] == -1)
+          {
+            O[p(currentCorner)] = 3*nt - 2;
+            O[3*nt - 2] = p(currentCorner); 
+          }
         }
       }
     }
@@ -1116,34 +1149,66 @@ class BaseMesh extends Mesh
   {
     int vertex = baseV(cc);
     //TODO msati3: Compaction?
-    for (int i = m_expansionIndex[vertex]; i < nv - ISLAND_SIZE - 2; i++)
-    {
-      G[i] = G[i + ISLAND_SIZE + 2];
-    }
-    nv -= (ISLAND_SIZE + 2);
     
-    print("Number of triangles with island " + m_numTrianglesVTable[vertex] + "\n");
-
-    for (int i = 0; i < 3*nt; i++)
+    int island = getIslandForVertex( m_expansionIndex[vertex] );
+    
+    int startCornerIsland = m_expansionIndexVTable[vertex];
+    int currentCornerIsland = startCornerIsland;
+    int initTrackedCorner = -1;
+    int trackedCorner = -1;
+    do
     {
-      if ( (V[i] >= m_expansionIndex[vertex]) && (V[i] < m_expansionIndex[vertex] + ISLAND_SIZE + 2) )
+      int currentCorner = currentCornerIsland;
+      print("Current corner " + currentCorner + "\n");
+      int nextCorner = -1;
+      int prevVertex = v(p(currentCornerIsland));
+      do
       {
-        V[i] = vertex;
+        if ( !belongsToIsland(v(n(currentCorner)), vertex) && !belongsToIsland(v(p(currentCorner)), vertex) )
+        {
+          print("Setting opposite " + currentCorner + "\n");
+          V[currentCorner] = vertex;
+          if ( initTrackedCorner == -1 )
+          {
+            initTrackedCorner = currentCorner;
+            trackedCorner = n(currentCorner);
+          }
+          else
+          {
+            O[trackedCorner] = p(currentCorner);
+            O[p(currentCorner)] = trackedCorner;
+            trackedCorner = n(currentCorner);
+          }
+        }
+        currentCorner = s(currentCorner);
+        if ( belongsToIsland(v(n(currentCorner)), vertex) && (nextCorner == -1) && ( v(n(currentCorner)) != prevVertex ) )
+        {
+          prevVertex = v(currentCorner);
+          nextCorner = n(currentCorner);
+        }
+      } while (currentCorner != currentCornerIsland);
+      currentCornerIsland = nextCorner;
+    } while ( currentCornerIsland != startCornerIsland );
+    O[trackedCorner] = p(initTrackedCorner);
+    O[p(initTrackedCorner)] = trackedCorner;
+    
+    for (int i = m_expansionIndexVTable[vertex]; ; i+=3)
+    {
+      if (belongsToIsland(v(i), vertex) || belongsToIsland(v(i+1), vertex) || belongsToIsland(v(i+2), vertex))
+      {
+        V[i] = -1;
+        V[i+1] = -1;
+        V[i+2] = -1;
+      }
+      else
+      {
+        break;
       }
     }
-    
-    for (int i = m_expansionIndexVTable[vertex]; i < 3*nt - 3*m_numTrianglesVTable[vertex]; i++)
-    {
-      V[i] = V[i + m_numTrianglesVTable[vertex]];
-      O[i] = O[i + m_numTrianglesVTable[vertex]];
-    }
-    nt -= m_numTrianglesVTable[vertex];  
-
-    m_expansionIndex[vertex] = -1;
     m_expansionIndexVTable[vertex] = -1;
-    m_numTrianglesVTable[vertex] = 5;
+    m_expansionIndex[vertex] = -1;
   }
-  
+
   void explodeExpand()
   {
     for (int i = 0; i < nt; i++)

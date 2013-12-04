@@ -403,7 +403,7 @@ class Mesh {
   } // picks corner of closest vertex to X
   void pickc (pt X) {
     int origCC = cc;
-    for (int b=0; b<nc; b++) if (vis[tm[t(b)]] && visible[t(b)]) if (d(X, cg(b))<d(X, cg(cc))) {
+    for (int b=0; b<nc; b++) if (V[b] != -1 && vis[tm[t(b)]] && visible[t(b)]) if (d(X, cg(b))<d(X, cg(cc)) ) {
       cc=b; 
       pc=b;
     }
@@ -833,7 +833,8 @@ class Mesh {
   } 
 
   void showTriangles(Boolean front, int opacity, float shrunk) {
-    for (int t=0; t<nt; t++) {      
+    for (int t=0; t<nt; t++) {
+      if (V[3*t] == -1) continue;    //Handle base mesh compacted triangles      
       if (!vis[tm[t]] || frontFacing(t)!=front || !visible[t]) continue;
       if (!frontFacing(t)&&showBack) {
         fill(blue); 
