@@ -614,12 +614,12 @@ class BaseMesh extends Mesh
     }
     
     decompressConnectivityForIsland( clersString, m_expansionIndex[ islandNumber ] );
-    ArrayList<LagoonExpansionStream> lagoonExpansionStreamList = islandExpansionStream.getLagoonExpansionStreamList();
-    for (int i = 0; i < lagoonExpansionStreamList.size(); i++)
+    LagoonExpansionStream[] lagoonExpansionStreams = m_expansionManager.getLagoonExpansionStreams( islandNumber );
+    for (int i = 0; i < lagoonExpansionStreams.length; i++)
     {
-      int v1 = lagoonExpansionStreamList.get(i).vertex1();
-      int v2 = lagoonExpansionStreamList.get(i).vertex2();
-      clersString = lagoonExpansionStreamList.get(i).getClersString();
+      int v1 = lagoonExpansionStreams[i].vertex1();
+      int v2 = lagoonExpansionStreams[i].vertex2();
+      clersString = lagoonExpansionStreams[i].getClersString();
       decompressConnectivityForLagoon( v1, v2, clersString, islandNumber );
     }
     

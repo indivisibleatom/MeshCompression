@@ -1,13 +1,17 @@
+int MAXLAGOONS = 100; //TODO msati3: We should count this number from the island mesh
+
 class IslandExpansionStream
 {
   private pt []m_G;
   private String m_clersString;
-  private ArrayList< LagoonExpansionStream > m_lagoonStreams;
+  private int m_lagoonStartIndex;
+  private int m_numLagoons;
   
   IslandExpansionStream()
   {
     m_G = new pt[VERTICES_PER_ISLAND];
-    m_lagoonStreams = new ArrayList<LagoonExpansionStream>();
+    m_lagoonStartIndex = -1;
+    m_numLagoons = 0;
   }
   
   void add(pt G, int i)
@@ -24,18 +28,6 @@ class IslandExpansionStream
     m_clersString = clersString;
   }
   
-  LagoonExpansionStream addLagoonExpansionStream()
-  {
-    LagoonExpansionStream lagoonStream = new LagoonExpansionStream();
-    m_lagoonStreams.add(lagoonStream);
-    return lagoonStream;
-  }
-  
-  ArrayList<LagoonExpansionStream> getLagoonExpansionStreamList()
-  {
-    return m_lagoonStreams;
-  }
-  
   pt[] getG()
   {
     return m_G;
@@ -45,6 +37,26 @@ class IslandExpansionStream
   {
     return m_clersString;  
   }  
+  
+  int getNumberLagoons()
+  {
+    return m_numLagoons;
+  }
+  
+  int getLagoonStartIndex()
+  {
+    return m_lagoonStartIndex;
+  }
+  
+  int addLagoon(int currentLagoonsIndex)
+  {
+    if ( m_lagoonStartIndex == -1 )
+    {
+      m_lagoonStartIndex = currentLagoonsIndex;
+    }
+    m_numLagoons++;
+    return m_lagoonStartIndex + (m_numLagoons-1);
+  }
 }
 
 /*
@@ -57,28 +69,45 @@ class BaseMeshBookkeeper
 
 class IslandExpansionManager
 {
-  private ArrayList<IslandExpansionStream> m_islandStreams;
+  private IslandExpansionStream[] m_islandStreams;
+  private LagoonExpansionStream[] m_lagoonExpansionStream;
+  int m_nLagoons; //TODO msati3: Can this be removed? Store current total number of lagoons
   
   IslandExpansionManager()
   {
-    m_islandStreams = new ArrayList<IslandExpansionStream>();
+    m_islandStreams = new IslandExpansionStream[numIslands];
+    m_lagoonExpansionStream = new LagoonExpansionStream[MAXLAGOONS];
+    m_nLagoons = 0;
   }
   
-  IslandExpansionStream addIslandStream()
+  IslandExpansionStream addStream(int islandNumber)
   {
-    m_islandStreams.add( new IslandExpansionStream() );
-    return getStream( m_islandStreams.size() - 1 );
-  }
-  
-  void removeIslandStream(int islandNumber)
-  {
-    print("Remove island " + islandNumber);
-    m_islandStreams.remove( islandNumber );
+    m_islandStreams[ islandNumber ] = new IslandExpansionStream();
+    return m_islandStreams[ islandNumber ];
   }
   
   IslandExpansionStream getStream(int islandNumber)
   {
-    return m_islandStreams.get( islandNumber );
+    return m_islandStreams[ islandNumber ];
+  }
+  
+  LagoonExpansionStream addLagoon(int islandNumber)
+  {
+    int numberLagoonsStream = m_islandStreams[islandNumber].addLagoon( m_nLagoons );
+    m_lagoonExpansionStream[numberLagoonsStream] = new LagoonExpansionStream();
+    m_nLagoons++; 
+    return m_lagoonExpansionStream[numberLagoonsStream];
+  }
+
+  LagoonExpansionStream[] getLagoonExpansionStreams(int islandNumber)
+  {
+    LagoonExpansionStream[] expansionStreams = new LagoonExpansionStream[ m_islandStreams[islandNumber].getNumberLagoons() ];
+    int startIndex = m_islandStreams[islandNumber].getLagoonStartIndex();
+    for (int i = 0; i < m_islandStreams[islandNumber].getNumberLagoons(); i++)
+    {
+      expansionStreams[i] = m_lagoonExpansionStream[startIndex+i];
+    }
+    return expansionStreams;
   }
 }
 

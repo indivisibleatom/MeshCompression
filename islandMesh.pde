@@ -68,7 +68,6 @@ class IslandMesh extends Mesh
  IslandMesh()
  {
    m_userInputHandler = new IslandMeshUserInputHandler(this);
-   m_islandExpansionManager = new IslandExpansionManager();
  }
 
  //Debug
@@ -767,6 +766,7 @@ class IslandMesh extends Mesh
     BaseMesh populateBaseG()
     {
      m_channelExpansionManager = new ChannelExpansionPacketManager(nt);
+     m_islandExpansionManager = new IslandExpansionManager();
      if ( DEBUG && DEBUG_MODE >= LOW )
      {
        print("Creating new base mesh");
@@ -1492,7 +1492,7 @@ class IslandMesh extends Mesh
       
        if ( isIslandVertex( v ) )
        {
-         IslandExpansionStream islandStream = m_islandExpansionManager.addIslandStream();
+         IslandExpansionStream islandStream = m_islandExpansionManager.addStream(i);
      
          int currentVOnIsland = v;
          int prevVOnIsland = v;
@@ -1772,7 +1772,7 @@ class IslandMesh extends Mesh
                if ( !isLagoonTriangleForCorner(u(currentCorner)) && ! isLagoonTriangleForCorner(s(n(currentCorner))) ) //If this is the starting lagoon triangle
                {
                  String clersString = compressIslandLagoon( currentCorner, n(currentCorner) );
-                 LagoonExpansionStream lagoonStream = islandStream.addLagoonExpansionStream();
+                 LagoonExpansionStream lagoonStream = m_islandExpansionManager.addLagoon(island);
                  lagoonStream.setVertices( m_islandVertexNumber.get((v(currentCorner))), m_islandVertexNumber.get((v(n(currentCorner)))) );
                  lagoonStream.setClersString(clersString);
                }
