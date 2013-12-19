@@ -79,12 +79,85 @@ class StatsCollector
       m_mesh.formIslands(result.seed());
       ColorResult res = m_mesh.colorTriangles();
 
-      output.println(ISLAND_SIZE + "\t" + numIslands + "\t" + res.total() + "\t" + numWater + "\t" + (float)numWater*100/res.total() + "\t" + res.land() + "\t" + res.pLand() + "\t" + res.water() + "\t" + res.pWater() + 
-                     "\t" + res.straits() + "\t" + res.pStraits() + "\t" + res.lagoons() + "\t" + res.pLagoons() + "\t" + res.separators() + "\t" + res.pSeparators() + "\t" + res.totalVerts() + "\t" + res.normalVerts() + 
-                     "\t" + res.pNormalVerts() + "\t" + res.waterVerts() + "\t" + res.pWaterVerts());
+      /*output.println(ISLAND_SIZE + "," + numIslands + "," + res.total() + "," + numWater + "," + (float)numWater*100/res.total() + "," + res.land() + "," + res.pLand() + "," + res.water() + "," + res.pWater() + 
+                     "," + res.straits() + "," + res.pStraits() + "," + res.lagoons() + "," + res.pLagoons() + "," + res.separators() + "," + res.pSeparators() + "," + res.totalVerts() + "," + res.normalVerts() + 
+                     "," + res.pNormalVerts() + "," + res.waterVerts() + "," + res.pWaterVerts());*/
+      output.println(ISLAND_SIZE + "," + res.totalVerts() + "," + res.waterVerts() + "," + res.pWaterVerts());
+      print("Colored\n");
+
+      //collectWaterSize(islandSize);
+      print("Collected\n");
     }
   }
   
+  
+  private int visitWater(int startCorner)
+  {
+    int count = 0;
+    Stack<Integer> stateStack = new Stack<Integer>();
+    stateStack.push(startCorner);
+    while (!stateStack.empty())   
+    {
+      startCorner = stateStack.pop();
+      int currentCorner = m_mesh.o(startCorner);
+      if (m_mesh.cm2[startCorner] == 0)
+      {
+        if (m_mesh.tm[m_mesh.t(currentCorner)] == CHANNEL || m_mesh.tm[m_mesh.t(currentCorner)] == LAGOON || m_mesh.tm[m_mesh.t(currentCorner)] == CAP)
+        {
+          stateStack.push(m_mesh.n(currentCorner));
+          stateStack.push(m_mesh.p(currentCorner));
+          m_mesh.cm2[startCorner] = 1;
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+  
+  public void collectWaterSize(int islandSize)
+  {
+    int maxWater = -1; 
+    int minWater = 100;
+    float average = 0;
+    int numRecords = 0;
+    float veryLow = 0;
+    float threshHold = islandSize / 2;
+
+    for (int i = 0; i < 3*m_mesh.nt; i++)
+    {
+      m_mesh.cm2[i] = 0;
+    }
+    
+    for (int i = 0; i < m_mesh.nt; i++)
+    {
+      if ( m_mesh.tm[i] == JUNCTION || m_mesh.tm[i] == ISOLATEDWATER )
+      {
+        for (int j = 0; j < 3; j++)
+        {
+          int numWater = visitWater(3*i+j);
+          average += numWater;
+          if (numWater < threshHold)
+          {
+            veryLow++;
+          }
+          if (numWater > maxWater)
+          {
+            maxWater = numWater;
+          }
+          if (numWater < minWater)
+          {
+            minWater = numWater;
+          }
+          numRecords++;
+        }
+      }
+    }
+    average /= numRecords;
+    veryLow /= numRecords;
+    veryLow *= 100;
+    output.println(maxWater + "," + minWater + "," + average + "," + veryLow);
+  }
+   
   public void done()
   {
     output.close();

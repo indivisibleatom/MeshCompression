@@ -284,8 +284,8 @@ class IslandMeshUserInputHandler extends MeshUserInputHandler
         s.collectStats(10, 30);
         s.collectStats(10, 62);
         s.done();
-      }
-      
+      }  
+      if (key=='5') { m_mesh.printStats(); }
       //Debugging modes
       if (key=='5') {g_stepWiseRingExpander.setStepMode(true); m_mesh.getDrawingState().m_fShowEdges = true; if (R == null) { R = new RingExpander(m_mesh, (int)random(m_mesh.nt * 3)); } R.ringExpanderStepRecursive();} //Press 4 to trigger step by step ring expander
     }

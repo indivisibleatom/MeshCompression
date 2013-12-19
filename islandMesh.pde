@@ -2166,4 +2166,9 @@ class IslandMesh extends Mesh
    G = baseG;
    baseG = temp;
  }
+ 
+ public void printStats()
+ {
+   m_islandExpansionManager.printStats();
+ }
 }

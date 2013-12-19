@@ -1,4 +1,4 @@
-int MAXLAGOONS = 100; //TODO msati3: We should count this number from the island mesh
+int MAXLAGOONS = 1000; //TODO msati3: We should count this number from the island mesh
 
 class IslandExpansionStream
 {
@@ -108,6 +108,25 @@ class IslandExpansionManager
       expansionStreams[i] = m_lagoonExpansionStream[startIndex+i];
     }
     return expansionStreams;
+  }
+  
+  void printStats()
+  {
+    float avgLagoons = 0;
+    float numLagoons = 0;
+    float avgLagoonSize = 0;
+    for (int i = 0; i < numIslands; i++)
+    {
+      numLagoons += m_islandStreams[i].getNumberLagoons();
+      for (int j = 0; j < m_islandStreams[i].getNumberLagoons(); j++)
+      {
+        int lagoonIndex = m_islandStreams[i].getLagoonStartIndex() + j;
+        avgLagoonSize += m_lagoonExpansionStream[j].getClersString().length();
+      }
+    }
+    avgLagoonSize /= numLagoons;
+    avgLagoons = numLagoons / numIslands;
+    print("Avg lagoon size " + avgLagoonSize + " Avg lagoons per island " + avgLagoons + "\n");
   }
 }
 

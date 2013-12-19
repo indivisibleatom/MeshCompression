@@ -39,7 +39,7 @@ class DrawingState
 class Mesh {
   //  ==================================== Internal variables ====================================
   // max sizes, counts, selected corners
-  int maxnv = 100000;                         //  max number of vertices
+  int maxnv = 1000000;                         //  max number of vertices
   int maxnt = maxnv*2;                       // max number of triangles
   int nv = 0;                              // current  number of vertices
   int nt = 0;                   // current number of triangles
@@ -63,6 +63,7 @@ class Mesh {
   int[] cm = new int[3*maxnt];               // corner markers: 
   int[] vm = new int[3*maxnt];               // vertex markers: 0=not marked, 1=interior, 2=border, 3=non manifold
   int[] tm = new int[3*maxnt];               // triangle markers: 0=not marked, 
+  int[] cm2 = new int[3*maxnt];               // triangle markers: 0=not marked, 
 
   // other tables
   int[] Mv = new int[maxnv];                  // vertex markers

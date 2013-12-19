@@ -39,7 +39,7 @@ class SimplificationController
      m_islandMesh.connectMesh(); 
      m_baseMesh.computeCForV();
      m_baseMesh.computeBox(); 
-     m_viewportManager.registerMeshToViewport( m_baseMesh, 1 ); 
+     m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
    }
    else if(key=='l') {IslandMesh m = new IslandMesh();
                  m.declareVectors();
