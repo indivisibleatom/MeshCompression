@@ -1,3 +1,11 @@
+class WaterStats
+{
+  int maxWaterSize;
+  int minWaterSize;
+  float averageWaterSize;
+  float pGreaterThanThree;
+}
+
 class ColorResult
 {
   private int m_numTriangles;
@@ -51,7 +59,7 @@ class StatsCollector
   {
     m_mesh = mesh;
     output = createWriter("stats.csv");
-    output.println("Num Triangles in Mesh\t Num triangles not on LR traversal\t Num water triangles after island formation\t Num triangles introduced by island formation\t Num Islands");
+    output.println("Num vertices, Num water vertices, %Water vertices, Max channel size, Average channel size, % greater than size 3, num lagoon triangles, %lagoon triangles");
   }
   
   private void collectStats(int numTries, int islandSize)
@@ -82,18 +90,18 @@ class StatsCollector
       /*output.println(ISLAND_SIZE + "," + numIslands + "," + res.total() + "," + numWater + "," + (float)numWater*100/res.total() + "," + res.land() + "," + res.pLand() + "," + res.water() + "," + res.pWater() + 
                      "," + res.straits() + "," + res.pStraits() + "," + res.lagoons() + "," + res.pLagoons() + "," + res.separators() + "," + res.pSeparators() + "," + res.totalVerts() + "," + res.normalVerts() + 
                      "," + res.pNormalVerts() + "," + res.waterVerts() + "," + res.pWaterVerts());*/
-      output.println(ISLAND_SIZE + "," + res.totalVerts() + "," + res.waterVerts() + "," + res.pWaterVerts());
-      print("Colored\n");
-
-      //collectWaterSize(islandSize);
-      print("Collected\n");
+      WaterStats stats = collectWaterSize(islandSize);
+      print("\n"+res.pLand()+"\n");
+      //output.println(res.totalVerts() + "," + res.waterVerts() + "," + res.pWaterVerts() + "," + stats.maxWaterSize + "," + stats.averageWaterSize + "," + stats.pGreaterThanThree + "," + res.lagoons() + "," + res.pLagoons());
     }
   }
   
-  
+  boolean fCount = true;
   private int visitWater(int startCorner)
   {
     int count = 0;
+    fCount = true;
+    int initCorner = startCorner;
     Stack<Integer> stateStack = new Stack<Integer>();
     stateStack.push(startCorner);
     while (!stateStack.empty())   
@@ -102,6 +110,7 @@ class StatsCollector
       int currentCorner = m_mesh.o(startCorner);
       if (m_mesh.cm2[startCorner] == 0)
       {
+        //if (m_mesh.tm[m_mesh.t(currentCorner)] == CHANNEL || m_mesh.tm[m_mesh.t(currentCorner)] == LAGOON)
         if (m_mesh.tm[m_mesh.t(currentCorner)] == CHANNEL || m_mesh.tm[m_mesh.t(currentCorner)] == LAGOON || m_mesh.tm[m_mesh.t(currentCorner)] == CAP)
         {
           stateStack.push(m_mesh.n(currentCorner));
@@ -109,19 +118,27 @@ class StatsCollector
           m_mesh.cm2[startCorner] = 1;
           count++;
         }
+        else if (m_mesh.tm[m_mesh.t(currentCorner)] == ISOLATEDWATER)
+        {
+          if (m_mesh.tm[m_mesh.t(initCorner)] == ISOLATEDWATER)
+          {
+            fCount = false;
+          }
+        }
       }
     }
     return count;
   }
   
-  public void collectWaterSize(int islandSize)
+  public WaterStats collectWaterSize(int islandSize)
   {
+    WaterStats stats = new WaterStats();
     int maxWater = -1; 
     int minWater = 100;
     float average = 0;
     int numRecords = 0;
-    float veryLow = 0;
-    float threshHold = islandSize / 2;
+    float veryHigh = 0;
+    float threshHold = 3;
 
     for (int i = 0; i < 3*m_mesh.nt; i++)
     {
@@ -135,27 +152,34 @@ class StatsCollector
         for (int j = 0; j < 3; j++)
         {
           int numWater = visitWater(3*i+j);
-          average += numWater;
-          if (numWater < threshHold)
+          if (fCount)
           {
-            veryLow++;
+            average += numWater;
+            if (numWater > threshHold)
+            {
+              veryHigh++;
+            }
+            if (numWater > maxWater)
+            {
+              maxWater = numWater;
+            }
+            if (numWater < minWater)
+            {
+              minWater = numWater;
+            }
+            numRecords++;
           }
-          if (numWater > maxWater)
-          {
-            maxWater = numWater;
-          }
-          if (numWater < minWater)
-          {
-            minWater = numWater;
-          }
-          numRecords++;
         }
       }
     }
     average /= numRecords;
-    veryLow /= numRecords;
-    veryLow *= 100;
-    output.println(maxWater + "," + minWater + "," + average + "," + veryLow);
+    veryHigh /= numRecords;
+    veryHigh *= 100;
+    stats.maxWaterSize = maxWater;
+    stats.minWaterSize = minWater;
+    stats.averageWaterSize = average;
+    stats.pGreaterThanThree = veryHigh;
+    return stats;
   }
    
   public void done()

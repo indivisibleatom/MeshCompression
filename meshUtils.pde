@@ -281,8 +281,8 @@ class IslandMeshUserInputHandler extends MeshUserInputHandler
       {
         g_stepWiseRingExpander.setStepMode(false);
         StatsCollector s = new StatsCollector(m_mesh); 
-        s.collectStats(10, 30);
-        s.collectStats(10, 62);
+        s.collectStats(10, 2);
+        //s.collectStats(10, 62);
         s.done();
       }  
       if (key=='5') { m_mesh.printStats(); }
