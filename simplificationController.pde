@@ -49,6 +49,13 @@ class SimplificationController
                  for(int i=0; i<10; i++) vis[i]=true;
                  changeIslandMesh(m);
                 }
+   else if(key=='*') {IslandMesh m = new IslandMesh(m_baseMesh);
+                 m.resetMarkers();
+                 m.computeBox();
+                 for(int i=0; i<20; i++) vis[i]=true;
+                 changeIslandMesh(m);
+                 m_baseMesh = null;
+                }
    else if(key=='M') {IslandMesh m = new IslandMesh();
                  m.declareVectors();  
                  m.loadMeshVTS(); 

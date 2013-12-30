@@ -58,7 +58,6 @@ class Mesh {
   vec[] Nv = new vec [maxnv];                 // vertex normals or laplace vectors
   vec[] Nt = new vec [maxnt];                // triangles normals
 
-
   // auxiliary tables for bookkeeping
   int[] cm = new int[3*maxnt];               // corner markers: 
   int[] vm = new int[3*maxnt];               // vertex markers: 0=not marked, 1=interior, 2=border, 3=non manifold
@@ -757,6 +756,7 @@ class Mesh {
   void showEdges () {
     for (int c=0; c<nc; c++) drawEdge(c);
   };  
+  
   void drawEdge(int c) {
     show(g(p(c)), g(n(c)));
   };  // draws edge of t(c) opposite to corner c
@@ -844,7 +844,7 @@ class Mesh {
       }
       //if(tm[t]==1) continue; 
       //if(tm[t]==1&&!showMiddle || tm[t]==0&&!showLeft || tm[t]==2&&!showRight) continue; 
-      if (tm[t]==0) fill(red, opacity); 
+      if (tm[t]==0) fill(cyan, opacity); 
       if (tm[t]==1) fill(brown, opacity); 
       if (tm[t]==2) fill(orange, opacity); 
       if (tm[t]==3) fill(cyan, opacity); 
@@ -855,7 +855,7 @@ class Mesh {
       if (tm[t]==8) fill(blue, opacity); 
       if (tm[t]==9) fill(yellow, opacity); 
       
-      if (tm[t]==10) fill(red, opacity); 
+      if (tm[t]==10) fill(cyan, opacity); 
       if (tm[t]==11) fill(brown, opacity); 
       if (tm[t]==12) fill(orange, opacity); 
       if (tm[t]==13) fill(cyan, opacity); 
@@ -886,14 +886,7 @@ class Mesh {
   // ********************************************************* DRAW *****************************************************
   void draw()
   {
-    if (m_drawingState.m_fShowEdges)
-    {
-      stroke(orange);
-    } 
-    else
-    { 
-      noStroke();
-    }
+    noStroke();
     if (m_drawingState.m_fPickingBack)
     {
       noStroke(); 
@@ -934,8 +927,8 @@ class Mesh {
     }
     if (m_drawingState.m_fShowEdges)
     {
-      stroke(red); 
-      showBorder();  // show border edges
+      stroke(black); 
+      showEdges();
     }
   }
 

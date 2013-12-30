@@ -45,6 +45,7 @@ class RingExpander
     {
       //306, 1329, 480, 805, 100, 28
       //seed = 13289;
+      //seed = 12623;
       //Venus: 89038
       print("Seed for ringExpander " + seed);
       m_seed = seed;

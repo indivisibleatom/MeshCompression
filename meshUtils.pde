@@ -272,11 +272,17 @@ class IslandMeshUserInputHandler extends MeshUserInputHandler
        }
        //m_viewportManager.registerMeshToViewport( m_baseMesh, 1 ); 
       }*/
-      if (key=='1') {g_stepWiseRingExpander.setStepMode(false); m_mesh.getDrawingState().m_fShowEdges = true; R = new RingExpander(m_mesh, (int) random(m_mesh.nt * 3)); m_mesh.setResult(R.completeRingExpanderRecursive()); m_mesh.showRingExpanderCorners(); }
-      if (key=='2') {g_stepWiseRingExpander.setStepMode(false); m_mesh.formIslands(-1);}
-      if (key=='3') {m_mesh.colorTriangles(); }
-      if (key=='4') {m_mesh.toggleMorphingState(); }
-      if (key=='6') {EgdeBreakerCompress e = new EgdeBreakerCompress(m_mesh); e.initCompression();}
+      if (key=='1') {g_stepWiseRingExpander.setStepMode(false); m_mesh.getDrawingState().m_fShowEdges = true; R = new RingExpander(m_mesh, (int) random(m_mesh.nt * 3)); m_mesh.setResult(R.completeRingExpanderRecursive()); 
+                     m_mesh.showRingExpanderCorners(); m_mesh.m_fRingExpanderRun = true; m_mesh.m_fRingEdgesPopulated = false; 
+      }
+      if (key=='2') {g_stepWiseRingExpander.setStepMode(false); m_mesh.formIslands(-1); m_mesh.m_coloringState = 1;}
+      if (key=='3') {m_mesh.colorTriangles(); m_mesh.m_coloringState = 2;}
+      if (key=='4') {m_mesh.m_coloringState = 3;}
+      if (key=='5') {m_mesh.m_coloringState = 4;}
+      if (key=='6') {m_mesh.m_coloringState = 5;}
+      //if (key=='4') {m_mesh.toggleMorphingState(); }
+      //if (key=='5') { m_mesh.printStats(); }
+      //if (key=='6') {EgdeBreakerCompress e = new EgdeBreakerCompress(m_mesh); e.initCompression();}
       if (key=='7')
       {
         g_stepWiseRingExpander.setStepMode(false);
@@ -285,9 +291,8 @@ class IslandMeshUserInputHandler extends MeshUserInputHandler
         //s.collectStats(10, 62);
         s.done();
       }  
-      if (key=='5') { m_mesh.printStats(); }
       //Debugging modes
-      if (key=='5') {g_stepWiseRingExpander.setStepMode(true); m_mesh.getDrawingState().m_fShowEdges = true; if (R == null) { R = new RingExpander(m_mesh, (int)random(m_mesh.nt * 3)); } R.ringExpanderStepRecursive();} //Press 4 to trigger step by step ring expander
+      /*if (key=='5') {g_stepWiseRingExpander.setStepMode(true); m_mesh.getDrawingState().m_fShowEdges = true; if (R == null) { R = new RingExpander(m_mesh, (int)random(m_mesh.nt * 3)); } R.ringExpanderStepRecursive();} //Press 4 to trigger step by step ring expander*/
     }
   }
 }

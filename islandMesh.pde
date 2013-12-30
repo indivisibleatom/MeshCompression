@@ -64,10 +64,39 @@ class IslandMesh extends Mesh
  int m_numAdvances = -1; //For advancing on an island border
  int m_currentAdvances = 0;
  int m_selectedIsland = -1;
+ boolean []m_ringEdge = new boolean[3*maxnt];
+ boolean m_fRingEdgesPopulated;
+ boolean m_fRingExpanderRun = false;
+ boolean m_fScreenShotColor = true;
+ int m_coloringState;
  
  IslandMesh()
  {
    m_userInputHandler = new IslandMeshUserInputHandler(this);
+   
+   for (int i = 0; i < 3*maxnt; i++)
+   {
+     m_ringEdge[i] = false;
+   }
+   m_fRingEdgesPopulated = false;
+   m_coloringState = 0;
+ }
+ 
+ IslandMesh(Mesh m)
+ {
+   G = m.G;
+   V = m.V;
+   O = m.O;
+   nv = m.nv;
+   nt = m.nt;
+   
+   m_userInputHandler = new IslandMeshUserInputHandler(this);
+   for (int i = 0; i < 3*maxnt; i++)
+   {
+     m_ringEdge[i] = false;
+   }
+   m_fRingEdgesPopulated = false;
+   m_coloringState = 0;
  }
 
  //Debug
@@ -129,9 +158,177 @@ class IslandMesh extends Mesh
      }
    }
    super.draw();
+   m_drawingState.m_fShowEdges = false;
    drawIsland();
-
+   
+   if ( m_fScreenShotColor )
+   {
+     if ( m_coloringState < 3 )
+     {
+       if ( m_fRingExpanderRun )
+       {
+         stroke(black);
+         for (int i = 0; i < 3*nt; i++)
+         {
+           if (hasRingEdgeAroundCorners(p(i)))
+           {
+             drawEdge(p(i));
+           }
+           if (hasRingEdgeAroundCorners(n(i)))
+           {
+             drawEdge(n(i));
+           }
+         }
+       }
+       else
+       {
+         stroke(red);
+         for (int i = 0; i < 3*nt; i++)
+         {
+           drawEdge(n(i));
+         }
+       }
+     }
+     else
+     {
+     }
+   }
+   else
+   {
+     stroke(red);
+     for (int i = 0; i < 3*nt; i++)
+     {
+       drawEdge(n(i));
+     }
+   }
  }
+ 
+   void showTriangles(Boolean front, int opacity, float shrunk) {
+    for (int t=0; t<nt; t++) {
+      if (V[3*t] == -1) continue;    //Handle base mesh compacted triangles      
+      if (!vis[tm[t]] || frontFacing(t)!=front || !visible[t]) continue;
+      if (!frontFacing(t)&&showBack) {
+        fill(blue); 
+        shade(t); 
+        continue;
+      }
+      //if(tm[t]==1) continue; 
+      //if(tm[t]==1&&!showMiddle || tm[t]==0&&!showLeft || tm[t]==2&&!showRight) continue; 
+      if (!m_fScreenShotColor)
+      {
+        if (tm[t]==0) fill(cyan, opacity); 
+        if (tm[t]==1) fill(brown, opacity); 
+        if (tm[t]==2) fill(orange, opacity); 
+        if (tm[t]==3) fill(cyan, opacity); 
+        if (tm[t]==4) fill(magenta, opacity); 
+        if (tm[t]==5) fill(green, opacity); 
+        if (tm[t]==6) fill(blue, opacity); 
+        if (tm[t]==7) fill(#FAAFBA, opacity); 
+        if (tm[t]==8) fill(blue, opacity); 
+        if (tm[t]==9) fill(yellow, opacity); 
+        
+        if (tm[t]==10) fill(cyan, opacity); 
+        if (tm[t]==11) fill(brown, opacity); 
+        if (tm[t]==12) fill(orange, opacity); 
+        if (tm[t]==13) fill(cyan, opacity); 
+        if (tm[t]==14) fill(magenta, opacity); 
+        if (tm[t]==15) fill(green, opacity); 
+        if (tm[t]==16) fill(blue, opacity); 
+        if (tm[t]==17) fill(#FAAFBA, opacity); 
+        if (tm[t]==18) fill(blue, opacity); 
+        if (tm[t]==19) fill(yellow, opacity); 
+        
+        if (vis[tm[t]]) {
+          if (m_drawingState.m_shrunk != 0) showShrunkT(t, m_drawingState.m_shrunk); 
+          else shade(t);
+        }
+      }
+      else
+      {
+        switch(m_coloringState)
+        {
+          //1 => RingExpander complete, 2 => submerged, 3 => 
+          case 0:
+            if (tm[t]==0) fill(cyan, opacity); 
+            if (tm[t]==1) fill(brown, opacity); 
+            if (tm[t]==2) fill(orange, opacity); 
+            if (tm[t]==3) fill(cyan, opacity); 
+            if (tm[t]==4) fill(blue, opacity); 
+            if (tm[t]==5) fill(green, opacity); 
+            if (tm[t]==6) fill(blue, opacity); 
+            if (tm[t]==7) fill(#FAAFBA, opacity); 
+            if (tm[t]==8) fill(cyan, opacity); 
+            if (tm[t]==9) fill(yellow, opacity); 
+            break;
+          case 1:
+            if (tm[t]==0) fill(cyan, opacity); 
+            if (tm[t]==1) fill(brown, opacity); 
+            if (tm[t]==2) fill(orange, opacity); 
+            if (tm[t]==3) fill(cyan, opacity); 
+            if (tm[t]==4) fill(yellow, opacity); 
+            if (tm[t]==5) fill(green, opacity); 
+            if (tm[t]==6) fill(blue, opacity); 
+            if (tm[t]==7) fill(#FAAFBA, opacity); 
+            if (tm[t]==8) fill(cyan, opacity); 
+            if (tm[t]==9) fill(yellow, opacity); 
+            break;
+          case 2:
+            if (tm[t]==0) fill(cyan, opacity); 
+            if (tm[t]==1) fill(brown, opacity); 
+            if (tm[t]==2) fill(orange, opacity); 
+            if (tm[t]==3) fill(cyan, opacity); 
+            if (tm[t]==4) fill(blue, opacity); 
+            if (tm[t]==5) fill(green, opacity); 
+            if (tm[t]==6) fill(blue, opacity); 
+            if (tm[t]==7) fill(cyan, opacity); 
+            if (tm[t]==8) fill(cyan, opacity); 
+            if (tm[t]==9) fill(yellow, opacity); 
+            break;
+          case 3:
+            if (tm[t]==0) fill(cyan, opacity); 
+            if (tm[t]==1) fill(brown, opacity); 
+            if (tm[t]==2) fill(orange, opacity); 
+            if (tm[t]==3) fill(cyan, opacity); 
+            if (tm[t]==4) fill(blue, opacity); 
+            if (tm[t]==5) fill(green, opacity); 
+            if (tm[t]==6) fill(blue, opacity); 
+            if (tm[t]==7) fill(cyan, opacity); 
+            if (tm[t]==8) fill(cyan, opacity); 
+            if (tm[t]==9) fill(yellow, opacity); 
+            break;
+          case 4: 
+            vis[9] = false;
+            if (tm[t]==0) fill(cyan, opacity); 
+            if (tm[t]==1) fill(brown, opacity); 
+            if (tm[t]==2) fill(orange, opacity); 
+            if (tm[t]==3) fill(cyan, opacity); 
+            if (tm[t]==4) fill(blue, opacity); 
+            if (tm[t]==5) fill(green, opacity); 
+            if (tm[t]==6) fill(blue, opacity); 
+            if (tm[t]==7) fill(cyan, opacity); 
+            if (tm[t]==8) fill(cyan, opacity); 
+            break;
+          case 5:
+            vis[9] = false;
+            vis[3] = false;
+            vis[7] = false;
+            vis[8] = false;
+            if (tm[t]==0) fill(cyan, opacity); 
+            if (tm[t]==1) fill(brown, opacity); 
+            if (tm[t]==2) fill(orange, opacity); 
+            if (tm[t]==4) fill(blue, opacity); 
+            if (tm[t]==5) fill(green, opacity); 
+            if (tm[t]==6) fill(blue, opacity); 
+            break;
+        }
+        
+        if (vis[tm[t]]) {
+          if (m_drawingState.m_shrunk != 0) showShrunkT(t, m_drawingState.m_shrunk); 
+          else shade(t);
+        }
+      }
+    }
+  }
 
  private void drawIsland()
  {
@@ -316,6 +513,27 @@ class IslandMesh extends Mesh
  private int getIslandAtCorner(int corner)
  {
    return island[corner];
+ }
+ 
+ //Given a corners, is there a ring edge corresponding to it
+ private boolean hasRingEdgeAroundCorners(int c3)
+ {
+   if ( !m_fRingEdgesPopulated )
+   {
+     m_fRingEdgesPopulated = true;
+     for (int i = 0; i < 3*nt; i++)
+     {
+       if ((tm[t(i)] == ISLAND) && (tm[t(o(i))] == WATER)) 
+       {
+         m_ringEdge[i] = true;
+       }
+       else
+       {
+         m_ringEdge[i] = false;
+       }
+     }
+   }
+   return m_ringEdge[c3];
  }
  
  //Given two corners belonging to a triangle, returns if this triangle has a beach edge
