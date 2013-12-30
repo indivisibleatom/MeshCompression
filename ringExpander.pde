@@ -46,6 +46,14 @@ class RingExpander
       //306, 1329, 480, 805, 100, 28
       //seed = 13289;
       //seed = 12623;
+      if ( 3*m_mesh.nt > 13000 )
+      {
+        seed = 12623;
+      }
+      else
+      {
+        seed = 414;
+      }
       //Venus: 89038
       print("Seed for ringExpander " + seed);
       m_seed = seed;

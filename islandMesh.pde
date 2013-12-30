@@ -163,20 +163,41 @@ class IslandMesh extends Mesh
    
    if ( m_fScreenShotColor )
    {
+     if ( m_coloringState >= 3 )
+     {
+       for (int i = 0; i < nv; i++)
+       {
+         if (isWaterVertex(i))
+         {
+           fill(red);
+           show(G[i], 4);
+         }
+       }
+     }
      if ( m_coloringState < 3 )
      {
        if ( m_fRingExpanderRun )
        {
-         stroke(black);
          for (int i = 0; i < 3*nt; i++)
          {
            if (hasRingEdgeAroundCorners(p(i)))
            {
+             strokeWeight(4);
+             stroke(black);
              drawEdge(p(i));
            }
-           if (hasRingEdgeAroundCorners(n(i)))
+           else if (hasRingEdgeAroundCorners(n(i)))
            {
+             strokeWeight(4);
+             stroke(black);
              drawEdge(n(i));
+           }
+           else
+           {
+             strokeWeight(1);
+             stroke(red);
+             drawEdge(n(i));
+             drawEdge(p(i));
            }
          }
        }
