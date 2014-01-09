@@ -138,6 +138,7 @@ class IslandCreator
       m_seed = retrySeed();
     }
     print("Seed for creation of islands " + m_seed + "\n");
+    m_seed = 127;
     m_cornerFifo.add(m_seed);
     internalCreateIslandsPass1();
     internalCreateIslandsPass2();

@@ -41,7 +41,7 @@ class SimplificationController
      m_baseMesh.computeBox(); 
      m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
    }*/
-   if (key=='p')  //Create base mesh and register it to other viewport archival
+   /*if (key=='p')  //Create base mesh and register it to other viewport archival
    {
      if (m_baseMesh != null)
      {
@@ -50,6 +50,17 @@ class SimplificationController
      MeshSimplifier simplifier = new MeshSimplifier( m_islandMesh );
      m_baseMesh = simplifier.simplify(); 
      m_baseMesh.computeCForV();
+     m_baseMesh.computeBox(); 
+     m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
+   }*/
+   if (key=='p')  //Create base mesh and register it to other viewport archival
+   {
+     if (m_baseMesh != null)
+     {
+       m_viewportManager.unregisterMeshFromViewport( m_baseMesh, 1 );
+     }
+     MeshSimplifierEdgeCollapse simplifier = new MeshSimplifierEdgeCollapse( m_islandMesh );
+     m_baseMesh = simplifier.simplify(); 
      m_baseMesh.computeBox(); 
      m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
    }
