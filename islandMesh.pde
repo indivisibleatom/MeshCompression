@@ -67,7 +67,7 @@ class IslandMesh extends Mesh
  boolean []m_ringEdge = new boolean[3*maxnt];
  boolean m_fRingEdgesPopulated;
  boolean m_fRingExpanderRun = false;
- boolean m_fScreenShotColor = true;
+ boolean m_fScreenShotColor = false;
  int m_coloringState;
  
  IslandMesh()
@@ -216,7 +216,7 @@ class IslandMesh extends Mesh
    }
    else
    {
-     stroke(red);
+     stroke(black);
      for (int i = 0; i < 3*nt; i++)
      {
        drawEdge(n(i));
@@ -237,7 +237,7 @@ class IslandMesh extends Mesh
       //if(tm[t]==1&&!showMiddle || tm[t]==0&&!showLeft || tm[t]==2&&!showRight) continue; 
       if (!m_fScreenShotColor)
       {
-        if (tm[t]==0) fill(cyan, opacity); 
+        if (tm[t]==0) fill(red, opacity); 
         if (tm[t]==1) fill(brown, opacity); 
         if (tm[t]==2) fill(orange, opacity); 
         if (tm[t]==3) fill(cyan, opacity); 

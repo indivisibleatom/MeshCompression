@@ -2,7 +2,7 @@ class SimplificationController
 {
  private ViewportManager m_viewportManager;
  private IslandMesh m_islandMesh;
- private BaseMesh m_baseMesh;
+ private Mesh m_baseMesh;
  
  SimplificationController()
  {
@@ -28,7 +28,7 @@ class SimplificationController
  
  void onKeyPressed()
  {
-   if (key=='p')  //Create base mesh and register it to other viewport archival
+   /*if (key=='p')  //Create base mesh and register it to other viewport archival
    {
      if (m_baseMesh != null)
      {
@@ -37,6 +37,18 @@ class SimplificationController
      m_baseMesh = m_islandMesh.populateBaseG(); 
      m_islandMesh.numberVerticesOfIslandsAndCreateStream();
      m_islandMesh.connectMesh(); 
+     m_baseMesh.computeCForV();
+     m_baseMesh.computeBox(); 
+     m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
+   }*/
+   if (key=='p')  //Create base mesh and register it to other viewport archival
+   {
+     if (m_baseMesh != null)
+     {
+       m_viewportManager.unregisterMeshFromViewport( m_baseMesh, 1 );
+     }
+     MeshSimplifier simplifier = new MeshSimplifier( m_islandMesh );
+     m_baseMesh = simplifier.simplify(); 
      m_baseMesh.computeCForV();
      m_baseMesh.computeBox(); 
      m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );

@@ -271,9 +271,15 @@ class IslandMeshUserInputHandler extends MeshUserInputHandler
          baseMesh.computeBox(); 
        }
        //m_viewportManager.registerMeshToViewport( m_baseMesh, 1 ); 
-      }*/
+      }
       if (key=='1') {g_stepWiseRingExpander.setStepMode(false); m_mesh.getDrawingState().m_fShowEdges = true; R = new RingExpander(m_mesh, (int) random(m_mesh.nt * 3)); m_mesh.setResult(R.completeRingExpanderRecursive()); 
                      m_mesh.showRingExpanderCorners(); m_mesh.m_fRingExpanderRun = true; m_mesh.m_fRingEdgesPopulated = false; 
+      }*/
+      if (key=='1') 
+      {
+        g_stepWiseRingExpander.setStepMode(false); m_mesh.getDrawingState().m_fShowEdges = true; 
+        IslandCreator islandCreator = new IslandCreator(m_mesh, (int) random(m_mesh.nt * 3));
+        islandCreator.createIslands();
       }
       if (key=='2') {g_stepWiseRingExpander.setStepMode(false); m_mesh.formIslands(-1); m_mesh.m_coloringState = 1;}
       if (key=='3') {m_mesh.colorTriangles(); m_mesh.m_coloringState = 2;}

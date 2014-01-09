@@ -39,7 +39,7 @@ class DrawingState
 class Mesh {
   //  ==================================== Internal variables ====================================
   // max sizes, counts, selected corners
-  int maxnv = 1000000;                         //  max number of vertices
+  int maxnv = 10000;                         //  max number of vertices
   int maxnt = maxnv*2;                       // max number of triangles
   int nv = 0;                              // current  number of vertices
   int nt = 0;                   // current number of triangles
