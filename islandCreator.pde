@@ -46,12 +46,52 @@ class IslandCreator
     return (int)random(m_mesh.nt*3);
   }
   
+  private boolean sameVertexIncidentNonChannel( int corner )
+  {
+    int v2 = m_mesh.v(m_mesh.n(corner));
+    int v3 = m_mesh.v(m_mesh.p(corner));
+
+    int currentCorner = corner;
+    do
+    {
+      int v2Cur = m_mesh.v(m_mesh.n(currentCorner));
+      int v3Cur = m_mesh.v(m_mesh.p(currentCorner));
+      if ((v2 == v2Cur || v2 == v3Cur) || (v3 == v2Cur || v3 == v3Cur))
+      {
+        if ( currentCorner == corner || currentCorner == m_mesh.s(corner) || currentCorner == m_mesh.u(corner) )
+        {
+        }
+        else
+        {
+          return true;
+        }
+      }
+      currentCorner = m_mesh.s(currentCorner);
+    } while (currentCorner != corner);
+    return false;
+  }
+  
   private boolean validTriangle(int corner)
   {
     int currentCorner = corner;
     do
     {
-      if ( m_mesh.v(m_mesh.o(m_mesh.n(currentCorner))) == m_mesh.v(m_mesh.o(m_mesh.p(currentCorner))) )
+      if ( sameVertexIncidentNonChannel( corner ) )
+      {
+        return false;
+      }
+      
+      if ( ( m_mesh.t(m_mesh.o(m_mesh.n(currentCorner))) == m_mesh.t(m_mesh.o(m_mesh.p(currentCorner))) ) ||
+           ( m_mesh.t(m_mesh.o(currentCorner)) == m_mesh.t(m_mesh.o(m_mesh.p(currentCorner))) ) ||
+           ( m_mesh.t(m_mesh.o(currentCorner)) == m_mesh.t(m_mesh.o(m_mesh.n(currentCorner))) ) )
+      {
+        return false;
+      }
+             
+
+      if ( ( m_mesh.v(m_mesh.o(m_mesh.n(currentCorner))) == m_mesh.v(m_mesh.o(m_mesh.p(currentCorner))) ) ||
+           ( m_mesh.v(m_mesh.o(currentCorner)) == m_mesh.v(m_mesh.o(m_mesh.p(currentCorner))) ) ||
+           ( m_mesh.v(m_mesh.o(currentCorner)) == m_mesh.v(m_mesh.o(m_mesh.n(currentCorner))) ) )
       {
         return false;
       }
@@ -133,14 +173,28 @@ class IslandCreator
   
   void createIslands()
   {
-    while ( !validTriangle(m_seed) )
+    m_mesh.resetMarkers();
+
+    int numTries = 0;
+    while (numTries < 50)
     {
-      m_seed = retrySeed();
+      int seed = (int)random(m_mesh.nc);
+      m_seed = -1;
+      for (int i = 0; i < 100; i++)
+      {
+        if ( validTriangle(seed) )
+        {
+          m_seed = retrySeed();
+        }
+      }
+      if ( m_seed != -1 )
+      {
+        m_cornerFifo.add(m_seed);
+        internalCreateIslandsPass1();
+      }
+      numTries++;
     }
-    print("Seed for creation of islands " + m_seed + "\n");
-    m_seed = 127;
-    m_cornerFifo.add(m_seed);
-    internalCreateIslandsPass1();
+    
     internalCreateIslandsPass2();
     
      //Clear all vertex markers

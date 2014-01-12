@@ -89,6 +89,7 @@ class IslandMesh extends Mesh
    O = m.O;
    nv = m.nv;
    nt = m.nt;
+   nc = m.nc;
    
    m_userInputHandler = new IslandMeshUserInputHandler(this);
    for (int i = 0; i < 3*maxnt; i++)

@@ -173,7 +173,7 @@ class MeshSimplifierEdgeCollapse
   //Collapse to a new vertex. Add this new vertex to lower location of G table and modify O, V and G tables
   private int edgeCollapse( int c1, int c2, pt vertex )
   {
-    print("Edge collapse " + c1 + "  " + c2 + "\n");
+    //print("Edge collapse " + c1 + "  " + c2 + "\n");
     Mesh m = m_simplifiedMesh;
     int v1 = m.v(m.n(c1));
     int v2 = m.v(m.p(c1));
@@ -235,9 +235,9 @@ class MeshSimplifierEdgeCollapse
         int l = m_simplifiedMesh.l(c);
         int r = m_simplifiedMesh.r(c);
         
-        if (DEBUG && DEBUG_MODE >= LOW)
+        if (DEBUG && DEBUG_MODE >= HIGH)
         {
-          print(c + " " + o + " " + l + " " + r + "\n");
+          print("Details " + c + " " + o + " " + l + " " + r + "\n");
         }
 
         pt newPt = centroid(m_simplifiedMesh, i);
@@ -252,6 +252,7 @@ class MeshSimplifierEdgeCollapse
           i = -1;
       }
     }
+    print("Num vertices " + m_simplifiedMesh.nv + " Num triangles " + m_simplifiedMesh.nt + "\n");
     return m_simplifiedMesh;
   }
 }
