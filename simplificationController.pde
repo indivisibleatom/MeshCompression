@@ -3,6 +3,7 @@ class SimplificationController
  private ViewportManager m_viewportManager;
  private IslandMesh m_islandMesh;
  private Mesh m_baseMesh;
+ private SuccLODMapperManager m_lodMapperManager;
  
  SimplificationController()
  {
@@ -11,6 +12,7 @@ class SimplificationController
   m_viewportManager.addViewport( new Viewport( width/2, 0, width/2, height ) );
 
   m_islandMesh = new IslandMesh(); 
+  m_lodMapperManager = new SuccLODMapperManager();
   m_baseMesh = null;
   m_islandMesh.declareVectors();  
   m_islandMesh.loadMeshVTS("data/horse.vts");

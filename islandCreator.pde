@@ -13,11 +13,48 @@ class IslandCreator
     m_cornerFifo = new LinkedList<Integer>();
   }
   
+  private int getValence(int corner)
+  {
+    int currentCorner = corner;
+    int valence = 0;
+    do 
+    {
+      valence++;
+      currentCorner = m_mesh.s(currentCorner);
+    } while ( currentCorner != corner );
+    return valence;
+  }
+    
   private void printStats()
   {
     int numIsland = 0;
     int numChannel = 0;
     int numOthers = 0;
+    
+    //Print information about the valence of each vertex
+    for (int i = 0; i < m_mesh.nv; i++)
+    {
+      m_mesh.vm[i] = 0;
+    }
+
+    float averageValence = 0;
+    int maxValence = 0;
+    int totalValence = 0;
+    for (int i = 0; i < m_mesh.nc; i++)
+    {
+      if (m_mesh.vm[m_mesh.v(i)] == 0)
+      {
+        m_mesh.vm[m_mesh.v(i)] = 1;
+        int valence = getValence(i);
+        totalValence += valence;
+        if ( valence > maxValence )
+        {
+          maxValence = valence;
+        }
+      }
+    }
+    averageValence = totalValence / m_mesh.nv;
+    
     for (int i = 0; i < m_mesh.nt; i++)
     {
       switch (m_mesh.tm[i])
@@ -38,7 +75,7 @@ class IslandCreator
         print("IslandCreator::printStats - Error!! Some other type of triangle exists as well!\n");
       }
     }
-    print("Stats num triangles " + m_mesh.nt + " islands " + numIsland + " channels " + numChannel + " others " + numOthers + "\n");
+    print("Stats num triangles " + m_mesh.nt + " islands " + numIsland + " channels " + numChannel + " others " + numOthers + " average valence " + averageValence + " max valence " + maxValence + "\n");
   }
   
   private int retrySeed()
