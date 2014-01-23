@@ -104,7 +104,7 @@ class IslandMesh extends Mesh
  void pickc (pt X) {
    int origCC = cc;
     super.pickc(X);
-    if ( origCC != cc && DEBUG && DEBUG_MODE >= LOW ) { print(" Island for corner " + cc + " is " + getIslandForVertexExtended(v(cc)) + " " + island[cc] + " Number of vertex wrt island is" + m_islandVertexNumber.get(v(cc)) + "\n" ); }
+    //if ( origCC != cc && DEBUG && DEBUG_MODE >= LOW ) { print(" Island for corner " + cc + " is " + getIslandForVertexExtended(v(cc)) + " " + island[cc] + " Number of vertex wrt island is" + m_islandVertexNumber.get(v(cc)) + "\n" ); }
  } // picks closest corner to X
 
  void resetMarkers() 

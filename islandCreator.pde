@@ -136,6 +136,11 @@ class IslandCreator
       {
         return false;
       }
+      if ( ( m_mesh.tm[m_mesh.t(m_mesh.s(m_mesh.s(currentCorner)))] == CHANNEL ) ||
+           ( m_mesh.tm[m_mesh.t(m_mesh.u(m_mesh.u(currentCorner)))] == CHANNEL ) )
+      {
+        return false;
+      }
       currentCorner = m_mesh.n(currentCorner);
     } while(currentCorner != corner);
     return true;
@@ -215,13 +220,17 @@ class IslandCreator
     int numTries = 0;
     while (numTries < 50)
     {
-      int seed = (int)random(m_mesh.nc);
       m_seed = -1;
       for (int i = 0; i < 100; i++)
       {
-        if ( validTriangle(seed) )
+        m_seed = retrySeed();
+        if ( validTriangle(m_seed) )
         {
-          m_seed = retrySeed();
+          break;
+        }
+        else
+        {
+          m_seed = -1;
         }
       }
       if ( m_seed != -1 )

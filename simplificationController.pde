@@ -55,14 +55,20 @@ class SimplificationController
      m_baseMesh.computeBox(); 
      m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
    }*/
-   if (key=='p')  //Create base mesh and register it to other viewport archival
+   //Debugging baseVToVMap
+   if (keyPressed&&key=='h')
+   {
+     m_lodMapperManager.getActiveLODMapper().printVertexMapping();
+   }
+   else if (key=='p')  //Create base mesh and register it to other viewport archival
    {
      if (m_baseMesh != null)
      {
        m_viewportManager.unregisterMeshFromViewport( m_baseMesh, 1 );
      }
-     MeshSimplifierEdgeCollapse simplifier = new MeshSimplifierEdgeCollapse( m_islandMesh );
+     MeshSimplifierEdgeCollapse simplifier = new MeshSimplifierEdgeCollapse( m_islandMesh, m_lodMapperManager );
      m_baseMesh = simplifier.simplify(); 
+     
      m_baseMesh.computeBox(); 
      m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
    }
@@ -74,7 +80,8 @@ class SimplificationController
                  for(int i=0; i<10; i++) vis[i]=true;
                  changeIslandMesh(m);
                 }
-   else if(key=='*') {IslandMesh m = new IslandMesh(m_baseMesh);
+   else if(key=='*') {
+                 IslandMesh m = new IslandMesh(m_baseMesh);
                  m.resetMarkers();
                  m.computeBox();
                  for(int i=0; i<20; i++) vis[i]=true;

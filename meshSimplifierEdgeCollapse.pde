@@ -2,11 +2,23 @@ class MeshSimplifierEdgeCollapse
 {
   private Mesh m_mesh;
   private Mesh m_simplifiedMesh;
+  private SuccLODMapperManager m_succLODMapperManager;
+  int[][] m_vertexMappingBaseToMain;
+  int[] m_triangleMappingBaseToMain;
+  int[][] m_vertexToTriagleMappingBaseToMain;
   
-  MeshSimplifierEdgeCollapse( Mesh m )
+  MeshSimplifierEdgeCollapse( Mesh m, SuccLODMapperManager sLODMapperManager )
   {
     m_mesh = m;
     m_simplifiedMesh = new Mesh();
+    m_succLODMapperManager = sLODMapperManager;
+    m_vertexMappingBaseToMain = new int[m_mesh.nv][3];
+    m_triangleMappingBaseToMain = new int[m_mesh.nt];
+    m_vertexToTriagleMappingBaseToMain = new int[m_mesh.nv][4];
+
+    m_succLODMapperManager.addLODLevel();
+    m_succLODMapperManager.getActiveLODMapper().setBaseMesh(m_simplifiedMesh);
+    m_succLODMapperManager.getActiveLODMapper().setRefinedMesh(m_mesh);
   }
   
   private pt centroid(Mesh m, int triangleIndex)
@@ -23,6 +35,15 @@ class MeshSimplifierEdgeCollapse
     //First create copy of orig mesh 
     for (int i = 0; i < m_mesh.nv; i++) 
     {
+      m_vertexMappingBaseToMain[i][0] = i;
+      m_vertexMappingBaseToMain[i][1] = -1;
+      m_vertexMappingBaseToMain[i][2] = -1;
+      
+      m_vertexToTriagleMappingBaseToMain[i][0] = -1;
+      m_vertexToTriagleMappingBaseToMain[i][1] = -1;
+      m_vertexToTriagleMappingBaseToMain[i][2] = -1;
+      m_vertexToTriagleMappingBaseToMain[i][3] = -1;     
+
       m_simplifiedMesh.G[i] = P(m_mesh.G[i]);
     }
     m_simplifiedMesh.nv = m_mesh.nv;
@@ -42,6 +63,7 @@ class MeshSimplifierEdgeCollapse
 
     for (int i = 0; i < m_mesh.nt; i++)
     {
+      m_triangleMappingBaseToMain[i] = i;
       m_simplifiedMesh.tm[i] = m_mesh.tm[i];
     }
     m_simplifiedMesh.nc = m_mesh.nc;
@@ -59,7 +81,7 @@ class MeshSimplifierEdgeCollapse
   private void shifGUp( pt[] G, int lower, int higher)
   {
     int offset = 1;
-    for (int i = lower+1; i < G.length; i++)
+    for (int i = lower+1; i < m_mesh.nv; i++)
     {
       if ( i == higher )
       {
@@ -68,15 +90,31 @@ class MeshSimplifierEdgeCollapse
       else
       {
         G[i-offset] = G[i];
+        for (int j = 0; j < 3; j++)
+        {
+          m_vertexMappingBaseToMain[i-offset][j] = m_vertexMappingBaseToMain[i][j];        
+        }
+        for (int j = 0; j < 4; j++)
+        {
+          m_vertexToTriagleMappingBaseToMain[i-offset][j] = m_vertexToTriagleMappingBaseToMain[i][j];        
+        }
       }
     }
   }
 
   private void shiftGUp( pt[] G, int startIndex )
   {
-    for (int i = startIndex+1; i < G.length; i++)
+    for (int i = startIndex+1; i < m_mesh.nv; i++)
     {
       G[i-1] = G[i];
+      for (int j = 0; j < 3; j++)
+      {
+        m_vertexMappingBaseToMain[i-1][j] = m_vertexMappingBaseToMain[i][j];
+      }
+      for (int j = 0; j < 4; j++)
+      {
+        m_vertexToTriagleMappingBaseToMain[i-1][j] = m_vertexToTriagleMappingBaseToMain[i][j];        
+      }
     }
   }
   
@@ -202,33 +240,65 @@ class MeshSimplifierEdgeCollapse
   }
   
   //Collapse to an already existing vertex
-  private void edgeCollapse( int c1, int c2, int vertexIndex )
+  private int edgeCollapse( int c1, int c2, int vertexIndex )
   {
     Mesh m = m_simplifiedMesh;
     int v1 = m.v(m.n(c1));
     int v2 = m.v(m.p(c1));
     int lower = v1 < v2 ? v1 : v2;
     int higher = v1 > v2 ? v1 : v2;
+    int retVal = 0;
     
     //Populate opposites
     populateOpposites(c1);
     populateOpposites(c2);
     
     //Modify G
-    shifGUp(m.G, lower, higher);
+    if ( lower < vertexIndex )
+    {
+      m.G[lower] = m.G[vertexIndex];
+      lower = vertexIndex < higher ? vertexIndex : higher;
+      higher = vertexIndex > higher ? vertexIndex : higher; 
+      shifGUp(m.G, lower, higher);
+      retVal = lower;
+    }
+    else
+    {
+      shifGUp(m.G, lower, higher);
+      retVal = vertexIndex;
+    }
     m.nv -= 2;
     
     //Remove triangles modify  V and O
     int t1 = m.t(c1); int t2 = m.t(c2);
     removeTriangles( t1, t2 );
-    fixupV(vertexIndex, lower, higher);
+    fixupV(retVal, lower, higher);
     fixupO(3*t1, 3*t2);
+    
+    return retVal;
   }
   
   Mesh simplify()
   {
     copyMainToSimplifiedMesh();
+    
+    int[] islandTriangleNumbersInMain = new int[m_mesh.nt];
+    int numIslandTriangles = 0;
+    int numBaseTriangles = 0;
+    
+    for (int i = 0; i < m_mesh.nt; i++)
+    {
+      if (m_mesh.tm[i] == ISLAND)
+      {
+        islandTriangleNumbersInMain[numIslandTriangles++] = i;
+      }
+      if (m_mesh.tm[i] != ISLAND && m_mesh.tm[i] != CHANNEL)
+      {
+         m_triangleMappingBaseToMain[numBaseTriangles++] = i;
+      }
+    }
 
+    numIslandTriangles = 0;
     for (int i = 0; i < m_simplifiedMesh.nt; i++)
     {
       if (m_simplifiedMesh.tm[i] == ISLAND)
@@ -247,14 +317,30 @@ class MeshSimplifierEdgeCollapse
         int commonVertexIndex = edgeCollapse( c, o, newPt );
         l = cornerShift( l, c, o );
         r = cornerShift( r, c, o );
-        edgeCollapse( l, r, newPt );
+        commonVertexIndex = edgeCollapse( l, r, newPt );
+
+        m_vertexMappingBaseToMain[commonVertexIndex][0] = m_mesh.v(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles]));
+        m_vertexMappingBaseToMain[commonVertexIndex][1] = m_mesh.v(m_mesh.n(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles])));
+        m_vertexMappingBaseToMain[commonVertexIndex][2] = m_mesh.v(m_mesh.p(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles])));
+        
+        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][0] = islandTriangleNumbersInMain[numIslandTriangles];
+        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][1] = m_mesh.t(m_mesh.s(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles])));
+        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][2] = m_mesh.t(m_mesh.s(m_mesh.n(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles]))));
+        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][3] = m_mesh.t(m_mesh.s(m_mesh.p(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles]))));
+        
+        numIslandTriangles++;
 
         //At most 3 triangles before may be removed due to collapse. Revert i index to the required number for this case
         i -= 4;
         if ( i < -1 )
+        {
           i = -1;
+        }
       }
     }
+    m_succLODMapperManager.getActiveLODMapper().setBaseToRefinedVMap(m_vertexMappingBaseToMain);
+    m_succLODMapperManager.getActiveLODMapper().setBaseToRefinedTMap(m_triangleMappingBaseToMain);
+    m_succLODMapperManager.getActiveLODMapper().setBaseVToRefinedTMap(m_vertexToTriagleMappingBaseToMain);
     print("Num vertices " + m_simplifiedMesh.nv + " Num triangles " + m_simplifiedMesh.nt + "\n");
     return m_simplifiedMesh;
   }
