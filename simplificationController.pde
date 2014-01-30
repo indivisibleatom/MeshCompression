@@ -68,9 +68,15 @@ class SimplificationController
      }
      MeshSimplifierEdgeCollapse simplifier = new MeshSimplifierEdgeCollapse( m_islandMesh, m_lodMapperManager );
      m_baseMesh = simplifier.simplify(); 
-     
+         
      m_baseMesh.computeBox(); 
      m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
+     
+     if ( m_lodMapperManager.fMaxSimplified() )
+     {
+       m_lodMapperManager.propagateNumberings();
+     }
+
    }
    else if(key=='l') {IslandMesh m = new IslandMesh();
                  m.declareVectors();

@@ -1,6 +1,4 @@
-
-
-int NUMLODS = 4;
+int NUMLODS = 2;
 int MAXTRIANGLES = 1000000;
 
 class SuccLODMapperManager
@@ -14,6 +12,11 @@ class SuccLODMapperManager
     m_sucLODMapper[m_currentLODLevel] = new SuccLODMapper();
   }
   
+  public boolean fMaxSimplified()
+  {
+    return (m_currentLODLevel >= NUMLODS - 1);
+  }
+  
   public SuccLODMapper getActiveLODMapper()
   {
     if ( m_currentLODLevel != -1 )
@@ -25,10 +28,11 @@ class SuccLODMapperManager
   
   public void propagateNumberings()
   {
-    for (int i = NUMLODS-1; i >= 0; i++)
+    for (int i = NUMLODS-1; i >= 0; i--)
     {
       m_sucLODMapper[i].createGExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
-      m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
+      m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
+      //m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
     }
   }
 }
@@ -45,6 +49,9 @@ class SuccLODMapper
   private int []m_triangleNumberings;  //Mapping from the triangles ordered correctly (N+4i,4i+1,...) according to the base mesh to the actual triangles numbers in the main mesh > used to transition from one LOD to another.
   private pt []m_GExpansionPacket;
   private boolean []m_edgeExpansionPacket;
+
+  private int[] m_refinedTriangleToOrderedTriangle;
+  private int[] m_refinedTriangleToAssociatedVertexNumber;
   
   SuccLODMapper()
   {
@@ -85,57 +92,64 @@ class SuccLODMapper
     int vertex = m_base.v(m_base.cc);
     print(m_base.cc + " " + vertex + " " + m_baseToRefinedVMap[vertex][0] + " " + m_baseToRefinedVMap[vertex][1] + " " + m_baseToRefinedVMap[vertex][2] + "\n");
     print(m_tBaseToRefinedTMap[m_base.t(m_base.cc)] + " " + m_vBaseToRefinedTMap[vertex][0] + " " + m_vBaseToRefinedTMap[vertex][1] + " " + m_vBaseToRefinedTMap[vertex][2] + " " +  m_vBaseToRefinedTMap[vertex][3] + "\n");
+    print("Vertex numberings " + m_vertexNumberings[3*vertex] + " " + m_vertexNumberings[3*vertex+1] + " " + m_vertexNumberings[3*vertex+2] + "\n");
+  }
+
+  private int getEdgeOffset( int corner )
+  {
+    corner %= 3;
+    return m_refined.p(corner);
   }
   
-  private void getSmallestBaseEdgeToExpand( int triangleNumber )
+  //Given a base triangle, returns one ordered triangle corresponding to the base triangle
+  private int getOrderedTriangleNumberInBase( SuccLODMapper parent, int baseTriangle )
   {
-    int corner =  m_refined.c(triangleNumber);
-    int minBaseTriangle = MAXTRIANGLES;
-    do
+    if ( parent != null )
     {
-      int triangleNumberDeterministic = getBaseTriangleNumberDeterministicForRefined( m_refined.t(m_refined.s(m_refined.o(corner))) );
-      if (triangleNumberDeterministic < minBaseTriangle)
-      {
-        minBaseTriangle = m_refined.t(m_refined.s(m_refined.o(corner)));
-      }
-      corner = m_refined.n(corner);
-    }while (corner != m_refined.c(triangleNumber) );
-  }
-  
-  private void getNextEdgeToExpWand( int triangleNumber )
-  {
-    int currentTriangle = triangleNumber;
-    int triangleNumber = s(triangleNumber);
-  }
-  
-  private void traverseBaseAndConstructPacket()
-  {
-    for (int i = 0; i < m_refined.nt; i++)
+      return parent.m_refinedTriangleToOrderedTriangle[baseTriangle];
+    }
+    else
     {
-      if (m_refined.tm[i] == ISLAND)
-      {
-        int smallestBase = getSmallestBaseEdgeToExpand(i);
-        setExpansionPacketToTrue(smallestBase, vertex);
-        renumberVertices( smallestBase );
-        int nextBase = getNextEdgeExpansion( smallestBase );
-        setExpansionPacketToTrue(smallestBase, vertex);
-        nextBase = getNextEdgeExpansion( nextBase );
-        setExpansionPacketToTrue(smallestBase, vertex);
-      }
+      return baseTriangle;
     }
   }
 
-  void createEdgeExpansionPacket(SuccLODMapper parent, int numBaseTriangles)
+  //Given a refined triangle, returns one ordered vertex corresponding to the base vertex that expands to the refined triangle
+  private int getOrderedVertexNumberInBase( int refinedTriangle )
   {
+    return m_refinedTriangleToAssociatedVertexNumber[ refinedTriangle ];
+  }
+  
+  private int findOrderedTriangle( int triangleRefined )
+  {
+    for (int i = 0; i < m_triangleNumberings.length; i++)
+    {
+      if ( m_triangleNumberings[i] == triangleRefined )
+        return i;
+    }
+    return -1;
+  }
+
+  void createTriangleNumberings(SuccLODMapper parent, int numBaseTriangles)
+  {
+    m_refinedTriangleToAssociatedVertexNumber = new int[m_refined.nt];
+    for (int i = 0; i < m_refinedTriangleToAssociatedVertexNumber.length; i++)
+    {
+      m_refinedTriangleToAssociatedVertexNumber[i] = -1;
+    }
+
     if ( parent == null )
     {
       int maxTriangleNumber = numBaseTriangles + 4*m_base.nv;
-      m_edgeExpansionPacket = new boolean[3*numBaseTriangles];
+      m_edgeExpansionPacket = new boolean[3*maxTriangleNumber];
       m_triangleNumberings = new int[maxTriangleNumber];
-      traverseBaseAndConstructPacket();
+      for (int i = 0; i < m_edgeExpansionPacket.length; i++)
+      {
+        m_edgeExpansionPacket[i] = false;
+      }
       for (int i = 0; i < numBaseTriangles; i++)
       {
-        m_triangleNumberings[i] = i;
+        m_triangleNumberings[i] = m_tBaseToRefinedTMap[i];
       }
       int offset = numBaseTriangles;
       for (int i = 0; i < m_base.nv; i++)
@@ -144,7 +158,7 @@ class SuccLODMapper
         {
           if ( m_vBaseToRefinedTMap[i][j] == -1 )
           {
-            m_triangleNumberings[offset + 4*i + j] = m_vBaseToRefinedTMap[i][0];
+            m_triangleNumberings[offset + 4*i + j] = -1;
           }
           else
           {
@@ -157,9 +171,20 @@ class SuccLODMapper
     {
       int maxTriangleNumber = numBaseTriangles + 4*parent.m_vertexNumberings.length;
       m_edgeExpansionPacket = new boolean[3*maxTriangleNumber];
+      for (int i = 0; i < m_edgeExpansionPacket.length; i++)
+      {
+        m_edgeExpansionPacket[i] = false;
+      }
       m_triangleNumberings = new int[maxTriangleNumber];
       for (int i = 0; i < numBaseTriangles; i++)
       {
+        if ( parent.m_triangleNumberings[i] == -1 )
+        {
+          if ( DEBUG && DEBUG_MODE >= LOW )
+          {
+            print("Parent's triangles numberings are -1. This should not happen\n");
+          }
+        }
         m_triangleNumberings[i] = m_tBaseToRefinedTMap[parent.m_triangleNumberings[i]];
       }
       int offset = numBaseTriangles;
@@ -169,20 +194,80 @@ class SuccLODMapper
         {
           if ( m_vBaseToRefinedTMap[parent.m_vertexNumberings[i]][j] == -1 )
           {
-            m_triangleNumberings[offset + 4*i + j] = m_vBaseToRefinedTMap[parent.m_vertexNumberings[i]][0];
+            m_triangleNumberings[offset + 4*i + j] = -1;
           }
           else
           {
+            if ( m_refinedTriangleToAssociatedVertexNumber[m_vBaseToRefinedTMap[parent.m_vertexNumberings[i]][j]] == -1 )
+            {
+              m_refinedTriangleToAssociatedVertexNumber[m_vBaseToRefinedTMap[parent.m_vertexNumberings[i]][j]] = offset + 4*i + j;
+            }
             m_triangleNumberings[offset + 4*i + j] = m_vBaseToRefinedTMap[parent.m_vertexNumberings[i]][j];
           }
         }
+      }
+    }
+
+    m_refinedTriangleToOrderedTriangle = new int[m_refined.nt];
+    for (int i = 0; i < m_refinedTriangleToOrderedTriangle.length; i++)
+    {
+      m_refinedTriangleToOrderedTriangle[i] = findOrderedTriangle(i); //TODO msati3: faster by caching
+    }
+  }
+  
+  private void createEdgeExpansionPacket(SuccLODMapper parent)
+  {
+    for (int i = 0; i < m_refined.nt; i++)
+    {
+      if ( m_refined.tm[i] == ISLAND )
+      {
+        int corner1 = m_refined.c(i);
+        int oppositeCorner1 = m_refined.o(corner1);
+        int baseTriangle1 = m_refined.t(m_refined.s(oppositeCorner1));
+        int offset1 = getEdgeOffset(m_refined.s(oppositeCorner1));
+
+        int corner2 = m_refined.n(corner1);
+        int oppositeCorner2 = m_refined.o(corner2);
+        int baseTriangle2 = m_refined.t(m_refined.s(oppositeCorner2));
+        int offset2 = getEdgeOffset(m_refined.s(oppositeCorner1));
+
+        int corner3 = m_refined.p(corner1);
+        int oppositeCorner3 = m_refined.o(corner3);
+        int baseTriangle3 = m_refined.t(m_refined.s(oppositeCorner3));
+        int offset3 = getEdgeOffset(m_refined.s(oppositeCorner1));
+        
+        int t1 = getOrderedTriangleNumberInBase( parent, baseTriangle1 );
+        int t2 = getOrderedTriangleNumberInBase( parent, baseTriangle2 );
+        int t3 = getOrderedTriangleNumberInBase( parent, baseTriangle3 );
+        
+        m_edgeExpansionPacket[3*t1 + offset1] = true;
+        m_edgeExpansionPacket[3*t2 + offset2] = true;
+        m_edgeExpansionPacket[3*t3 + offset3] = true;
+        
+        int vertexBase = getOrderedVertexNumberInBase( i ); //TODO msati3: Cache this
+
+        //Renumber the G packet
+        int offset = 0;
+        if ( t2 < t3 && t2 < t1 )
+        {
+          offset = 1;
+        }
+        if ( t3 < t2 && t3 < t1 )
+        {
+          offset = 2;
+        }
+        pt temp = m_GExpansionPacket[3*vertexBase+offset];
+        m_GExpansionPacket[3*vertexBase+offset] = m_GExpansionPacket[3*vertexBase+(offset+1)%3];
+        offset = (offset + 1) % 3;
+        m_GExpansionPacket[3*vertexBase+offset] = m_GExpansionPacket[3*vertexBase+(offset+1)%3];
+        offset = (offset + 1) % 3;
+        m_GExpansionPacket[3*vertexBase+offset] = temp;
       }
     }
   }
   
   void createGExpansionPacket(SuccLODMapper parent)
   {
-    m_GExpansionPacket = new pt[3*m_base.nv];
     int []vertexNumberings;
     if ( parent == null )
     {
@@ -192,11 +277,13 @@ class SuccLODMapper
         vertexNumberings[i] = i;
       }
       m_vertexNumberings = new int[3*m_base.nv];
+      m_GExpansionPacket = new pt[3*m_base.nv];
     }
     else
     {
-      m_vertexNumberings = new int[3*m_base.nv];
       vertexNumberings = parent.m_vertexNumberings;
+      m_vertexNumberings = new int[3*vertexNumberings.length];
+      m_GExpansionPacket = new pt[3*vertexNumberings.length];
     }
     for (int i = 0; i < vertexNumberings.length; i++)
     {
