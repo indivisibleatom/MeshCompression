@@ -1,4 +1,7 @@
+
+
 int NUMLODS = 4;
+int MAXTRIANGLES = 1000000;
 
 class SuccLODMapperManager
 {
@@ -25,9 +28,7 @@ class SuccLODMapperManager
     for (int i = NUMLODS-1; i >= 0; i++)
     {
       m_sucLODMapper[i].createGExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
-      m_sucLODMapper[i].setVertexNumberingForRefined();
       m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
-      m_sucLODMapper[i].setTriangleNumberingForRefined();
     }
   }
 }
@@ -49,12 +50,12 @@ class SuccLODMapper
   {
   }
   
-  int getBaseTriangles()
+  public int getBaseTriangles()
   {
     return m_base.nt;
   }
 
-  void setBaseMesh( Mesh base )
+  public void setBaseMesh( Mesh base )
   {
     m_base = base;
   }
@@ -64,17 +65,17 @@ class SuccLODMapper
     m_refined = refined;
   }
   
-  void setBaseToRefinedVMap(int [][] vMap)
+  void setBaseToRefinedVMap(int[][] vMap)
   {
     m_baseToRefinedVMap = vMap;
   }
   
-  void setBaseToRefinedTMap(int [] tMap)
+  void setBaseToRefinedTMap(int[] tMap)
   {
     m_tBaseToRefinedTMap = tMap;
   }
   
-  void setBaseVToRefinedTMap(int [][] vToTMap)
+  void setBaseVToRefinedTMap(int[][] vToTMap)
   {
     m_vBaseToRefinedTMap = vToTMap;
   }  
@@ -86,23 +87,96 @@ class SuccLODMapper
     print(m_tBaseToRefinedTMap[m_base.t(m_base.cc)] + " " + m_vBaseToRefinedTMap[vertex][0] + " " + m_vBaseToRefinedTMap[vertex][1] + " " + m_vBaseToRefinedTMap[vertex][2] + " " +  m_vBaseToRefinedTMap[vertex][3] + "\n");
   }
   
-  void createEdgeExpanionPacket(SuccLODMapper parent, int numBaseTriangles)
+  private void getSmallestBaseEdgeToExpand( int triangleNumber )
   {
-    if ( parent == NULL )
+    int corner =  m_refined.c(triangleNumber);
+    int minBaseTriangle = MAXTRIANGLES;
+    do
+    {
+      int triangleNumberDeterministic = getBaseTriangleNumberDeterministicForRefined( m_refined.t(m_refined.s(m_refined.o(corner))) );
+      if (triangleNumberDeterministic < minBaseTriangle)
+      {
+        minBaseTriangle = m_refined.t(m_refined.s(m_refined.o(corner)));
+      }
+      corner = m_refined.n(corner);
+    }while (corner != m_refined.c(triangleNumber) );
+  }
+  
+  private void getNextEdgeToExpWand( int triangleNumber )
+  {
+    int currentTriangle = triangleNumber;
+    int triangleNumber = s(triangleNumber);
+  }
+  
+  private void traverseBaseAndConstructPacket()
+  {
+    for (int i = 0; i < m_refined.nt; i++)
+    {
+      if (m_refined.tm[i] == ISLAND)
+      {
+        int smallestBase = getSmallestBaseEdgeToExpand(i);
+        setExpansionPacketToTrue(smallestBase, vertex);
+        renumberVertices( smallestBase );
+        int nextBase = getNextEdgeExpansion( smallestBase );
+        setExpansionPacketToTrue(smallestBase, vertex);
+        nextBase = getNextEdgeExpansion( nextBase );
+        setExpansionPacketToTrue(smallestBase, vertex);
+      }
+    }
+  }
+
+  void createEdgeExpansionPacket(SuccLODMapper parent, int numBaseTriangles)
+  {
+    if ( parent == null )
     {
       int maxTriangleNumber = numBaseTriangles + 4*m_base.nv;
-      m_edgeExpansionPacket = new bool[3*maxTriangleNumber];
-      triangleNumberings = new int[m_base.nt];
+      m_edgeExpansionPacket = new boolean[3*numBaseTriangles];
+      m_triangleNumberings = new int[maxTriangleNumber];
+      traverseBaseAndConstructPacket();
+      for (int i = 0; i < numBaseTriangles; i++)
+      {
+        m_triangleNumberings[i] = i;
+      }
+      int offset = numBaseTriangles;
       for (int i = 0; i < m_base.nv; i++)
       {
-        triangleNumberings[i] = i;
+        for (int j = 0; j < 4; j++)
+        {
+          if ( m_vBaseToRefinedTMap[i][j] == -1 )
+          {
+            m_triangleNumberings[offset + 4*i + j] = m_vBaseToRefinedTMap[i][0];
+          }
+          else
+          {
+            m_triangleNumberings[offset + 4*i + j] = m_vBaseToRefinedTMap[i][j];
+          }
+        }
       }
     }
     else
     {
-      int maxTriangleNumber = numBaseTriangles + 4*m_base.nv;
-      m_triangleNumberings = new int[numBaseTriangles + 4*m_base.nv];
-      m_triangleNumberings = parent.m_vertexNumberings;
+      int maxTriangleNumber = numBaseTriangles + 4*parent.m_vertexNumberings.length;
+      m_edgeExpansionPacket = new boolean[3*maxTriangleNumber];
+      m_triangleNumberings = new int[maxTriangleNumber];
+      for (int i = 0; i < numBaseTriangles; i++)
+      {
+        m_triangleNumberings[i] = m_tBaseToRefinedTMap[parent.m_triangleNumberings[i]];
+      }
+      int offset = numBaseTriangles;
+      for (int i = 0; i < parent.m_vertexNumberings.length; i++)
+      {
+        for (int j = 0; j < 4; j++)
+        {
+          if ( m_vBaseToRefinedTMap[parent.m_vertexNumberings[i]][j] == -1 )
+          {
+            m_triangleNumberings[offset + 4*i + j] = m_vBaseToRefinedTMap[parent.m_vertexNumberings[i]][0];
+          }
+          else
+          {
+            m_triangleNumberings[offset + 4*i + j] = m_vBaseToRefinedTMap[parent.m_vertexNumberings[i]][j];
+          }
+        }
+      }
     }
   }
   
@@ -110,27 +184,28 @@ class SuccLODMapper
   {
     m_GExpansionPacket = new pt[3*m_base.nv];
     int []vertexNumberings;
-    if ( parent == NULL )
+    if ( parent == null )
     {
       vertexNumberings = new int[m_base.nv];
       for (int i = 0; i < m_base.nv; i++)
       {
         vertexNumberings[i] = i;
       }
+      m_vertexNumberings = new int[3*m_base.nv];
     }
     else
     {
       m_vertexNumberings = new int[3*m_base.nv];
       vertexNumberings = parent.m_vertexNumberings;
     }
-    for (int i = 0; i < vertexNumberings.size(); i++)
+    for (int i = 0; i < vertexNumberings.length; i++)
     {
       for (int j = 0; j < 3; j++)
       {
         if (m_baseToRefinedVMap[vertexNumberings[i]][j] == -1)
         {
           m_GExpansionPacket[3*i+j] = P(m_refined.G[m_baseToRefinedVMap[vertexNumberings[i]][0]]);
-          m_vertexNumberings[3*i+j] = m_baseToRefinedVMap[vertexNumberings[i]][0]];
+          m_vertexNumberings[3*i+j] = m_baseToRefinedVMap[vertexNumberings[i]][0];
         }
         else
         {
@@ -139,5 +214,5 @@ class SuccLODMapper
         }
       }
     }
-  } 
+  }
 }
