@@ -92,7 +92,6 @@ class SuccLODMapper
     int vertex = m_base.v(m_base.cc);
     print(m_base.cc + " " + vertex + " " + m_baseToRefinedVMap[vertex][0] + " " + m_baseToRefinedVMap[vertex][1] + " " + m_baseToRefinedVMap[vertex][2] + "\n");
     print(m_tBaseToRefinedTMap[m_base.t(m_base.cc)] + " " + m_vBaseToRefinedTMap[vertex][0] + " " + m_vBaseToRefinedTMap[vertex][1] + " " + m_vBaseToRefinedTMap[vertex][2] + " " +  m_vBaseToRefinedTMap[vertex][3] + "\n");
-    print("Vertex numberings " + m_vertexNumberings[3*vertex] + " " + m_vertexNumberings[3*vertex+1] + " " + m_vertexNumberings[3*vertex+2] + "\n");
   }
 
   private int getEdgeOffset( int corner )

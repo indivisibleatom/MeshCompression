@@ -1,16 +1,23 @@
+int c_numMeshes = 3;
+
 class SimplificationController
 {
  private ViewportManager m_viewportManager;
  private IslandMesh m_islandMesh;
  private Mesh m_baseMesh;
  private SuccLODMapperManager m_lodMapperManager;
+ private ArrayList<Mesh> m_displayMeshes;
+ int m_minMesh;
+ int m_maxMesh;
  
  SimplificationController()
  {
   m_viewportManager = new ViewportManager();
-  m_viewportManager.addViewport( new Viewport( 0, 0, width/2, height ) );
-  m_viewportManager.addViewport( new Viewport( width/2, 0, width/2, height ) );
+  m_viewportManager.addViewport( new Viewport( 0, 0, width/3, height ) );
+  m_viewportManager.addViewport( new Viewport( width/3, 0, width/3, height ) );
+  m_viewportManager.addViewport( new Viewport( 2*width/3, 0, width/3, height ) );
 
+  m_displayMeshes = new ArrayList<Mesh>();
   m_islandMesh = new IslandMesh(); 
   m_lodMapperManager = new SuccLODMapperManager();
   m_baseMesh = null;
@@ -20,6 +27,9 @@ class SimplificationController
   m_islandMesh.resetMarkers(); // resets vertex and tirangle markers
   m_islandMesh.computeBox();
   m_viewportManager.registerMeshToViewport( m_islandMesh, 0 );
+  m_displayMeshes.add(m_islandMesh);
+  m_minMesh = 0;
+  m_maxMesh = 0;
   for(int i=0; i<20; i++) vis[i]=true; // to show all types of triangles
  }
  
@@ -62,15 +72,11 @@ class SimplificationController
    }
    else if (key=='p')  //Create base mesh and register it to other viewport archival
    {
-     if (m_baseMesh != null)
-     {
-       m_viewportManager.unregisterMeshFromViewport( m_baseMesh, 1 );
-     }
      MeshSimplifierEdgeCollapse simplifier = new MeshSimplifierEdgeCollapse( m_islandMesh, m_lodMapperManager );
      m_baseMesh = simplifier.simplify(); 
-         
+     
      m_baseMesh.computeBox(); 
-     m_viewportManager.registerMeshToViewport( m_baseMesh, 1 );
+     onMeshAdded(m_baseMesh);
      
      if ( m_lodMapperManager.fMaxSimplified() )
      {
@@ -135,14 +141,26 @@ class SimplificationController
    }
  }
  
+ private void onMeshAdded( Mesh mesh )
+ {
+   m_displayMeshes.add(mesh);
+   if ( m_maxMesh - m_minMesh > c_numMeshes )
+   {
+     for (int i = m_minMesh; i < m_maxMesh; i++)
+     {
+       m_viewportManager.unregisterMeshFromViewport( m_displayMeshes.get(i), i - m_minMesh );
+       m_viewportManager.registerMeshToViewport( m_displayMeshes.get(i+1), i - m_minMesh );
+     }
+     m_maxMesh++;
+     m_minMesh++;
+   }
+ }
+ 
  private void changeIslandMesh(IslandMesh m)
  {
-   m_viewportManager.unregisterMeshFromViewport( m_islandMesh, 0 );
-   if ( m_baseMesh != null )
-   {
-     m_viewportManager.unregisterMeshFromViewport( m_baseMesh, 1 );
-   }
+   m_viewportManager.unregisterMeshFromViewport( m_displayMeshes.get(m_maxMesh), m_maxMesh - m_minMesh );
+   m_displayMeshes.set( m_maxMesh, m );
    m_islandMesh = m;
-   m_viewportManager.registerMeshToViewport( m_islandMesh, 0 );
+   m_viewportManager.registerMeshToViewport( m_displayMeshes.get(m_maxMesh), m_maxMesh - m_minMesh );
  }
 }
