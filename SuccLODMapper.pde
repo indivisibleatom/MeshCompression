@@ -1,4 +1,4 @@
-int NUMLODS = 2;
+int NUMLODS = 1;
 int MAXTRIANGLES = 1000000;
 
 class SuccLODMapperManager
@@ -32,7 +32,7 @@ class SuccLODMapperManager
     {
       m_sucLODMapper[i].createGExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
       m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
-      //m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
+      m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
     }
   }
 }
@@ -163,6 +163,10 @@ class SuccLODMapper
           else
           {
             m_triangleNumberings[offset + 4*i + j] = m_vBaseToRefinedTMap[i][j];
+            if ( m_refinedTriangleToAssociatedVertexNumber[m_vBaseToRefinedTMap[i][j]] == -1 )
+            {
+              m_refinedTriangleToAssociatedVertexNumber[m_vBaseToRefinedTMap[i][j]] = offset + 4*i + j;
+            }
           }
         }
       }
@@ -187,7 +191,7 @@ class SuccLODMapper
         }
         m_triangleNumberings[i] = m_tBaseToRefinedTMap[parent.m_triangleNumberings[i]];
       }
-      int offset = numBaseTriangles;
+      int offset = numBaseTriangles;      
       for (int i = 0; i < parent.m_vertexNumberings.length; i++)
       {
         for (int j = 0; j < 4; j++)
@@ -247,7 +251,7 @@ class SuccLODMapper
         int vertexBase = getOrderedVertexNumberInBase( i ); //TODO msati3: Cache this
 
         //Renumber the G packet
-        int offset = 0;
+        /*int offset = 0;
         if ( t2 < t3 && t2 < t1 )
         {
           offset = 1;
@@ -261,7 +265,7 @@ class SuccLODMapper
         offset = (offset + 1) % 3;
         m_GExpansionPacket[3*vertexBase+offset] = m_GExpansionPacket[3*vertexBase+(offset+1)%3];
         offset = (offset + 1) % 3;
-        m_GExpansionPacket[3*vertexBase+offset] = temp;
+        m_GExpansionPacket[3*vertexBase+offset] = temp;*/
       }
     }
   }
