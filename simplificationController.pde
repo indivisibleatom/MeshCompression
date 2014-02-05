@@ -143,6 +143,8 @@ class SimplificationController
  
  private void onMeshAdded( Mesh mesh )
  {
+   m_maxMesh++;
+   print("Adding mesh" + m_maxMesh + " " + m_minMesh + "\n");
    m_displayMeshes.add(mesh);
    if ( m_maxMesh - m_minMesh > c_numMeshes )
    {
@@ -151,13 +153,17 @@ class SimplificationController
        m_viewportManager.unregisterMeshFromViewport( m_displayMeshes.get(i), i - m_minMesh );
        m_viewportManager.registerMeshToViewport( m_displayMeshes.get(i+1), i - m_minMesh );
      }
-     m_maxMesh++;
      m_minMesh++;
+   }
+   else
+   {
+     m_viewportManager.registerMeshToViewport( m_displayMeshes.get(m_maxMesh), m_maxMesh );
    }
  }
  
  private void changeIslandMesh(IslandMesh m)
  {
+   print("Changing island mesh");
    m_viewportManager.unregisterMeshFromViewport( m_displayMeshes.get(m_maxMesh), m_maxMesh - m_minMesh );
    m_displayMeshes.set( m_maxMesh, m );
    m_islandMesh = m;
