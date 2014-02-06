@@ -22,6 +22,11 @@ class ViewportManager
     }
   }
   
+  int getSelectedViewport()
+  {
+    return m_selectedViewport;
+  }
+  
   void selectViewport( int index )
   {
     if ( index >= m_viewports.size() || m_viewports.size() < 0)

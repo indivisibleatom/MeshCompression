@@ -1,4 +1,4 @@
-int NUMLODS = 1;
+int NUMLODS = 2;
 int MAXTRIANGLES = 1000000;
 
 class SuccLODMapperManager
@@ -26,13 +26,29 @@ class SuccLODMapperManager
     return null;
   }
   
+  public SuccLODMapper getLODMapperForBaseMeshNumber(int number)
+  {
+    if ( m_currentLODLevel != -1 )
+    {
+      if ( number > 0 )
+      {
+        return m_sucLODMapper[number - 1];
+      }
+      else
+      {
+        return m_sucLODMapper[number];
+      }
+    }
+    return null;
+  }
+  
   public void propagateNumberings()
   {
     for (int i = NUMLODS-1; i >= 0; i--)
     {
       m_sucLODMapper[i].createGExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
-      m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
-      m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
+      //m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
+      //m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
     }
   }
 }
@@ -87,11 +103,12 @@ class SuccLODMapper
     m_vBaseToRefinedTMap = vToTMap;
   }  
   
-  void printVertexMapping()
+  void printVertexMapping(int corner)
   {
-    int vertex = m_base.v(m_base.cc);
-    print(m_base.cc + " " + vertex + " " + m_baseToRefinedVMap[vertex][0] + " " + m_baseToRefinedVMap[vertex][1] + " " + m_baseToRefinedVMap[vertex][2] + "\n");
-    print(m_tBaseToRefinedTMap[m_base.t(m_base.cc)] + " " + m_vBaseToRefinedTMap[vertex][0] + " " + m_vBaseToRefinedTMap[vertex][1] + " " + m_vBaseToRefinedTMap[vertex][2] + " " +  m_vBaseToRefinedTMap[vertex][3] + "\n");
+    print("Base num vertices " + m_base.nv + "\n");
+    int vertex = m_base.v(corner);
+    print("\n" + corner + " " + vertex + " " + m_baseToRefinedVMap[vertex][0] + " " + m_baseToRefinedVMap[vertex][1] + " " + m_baseToRefinedVMap[vertex][2] + "\n");
+    print(m_tBaseToRefinedTMap[m_base.t(corner)] + " " + m_vBaseToRefinedTMap[vertex][0] + " " + m_vBaseToRefinedTMap[vertex][1] + " " + m_vBaseToRefinedTMap[vertex][2] + " " +  m_vBaseToRefinedTMap[vertex][3] + "\n");
   }
 
   private int getEdgeOffset( int corner )

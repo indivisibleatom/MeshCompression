@@ -68,7 +68,8 @@ class SimplificationController
    //Debugging baseVToVMap
    if (keyPressed&&key=='h')
    {
-     m_lodMapperManager.getActiveLODMapper().printVertexMapping();
+     int corner = m_displayMeshes.get(m_minMesh + m_viewportManager.getSelectedViewport()).cc;
+     m_lodMapperManager.getLODMapperForBaseMeshNumber(m_minMesh + m_viewportManager.getSelectedViewport()).printVertexMapping(corner);
    }
    else if (key=='p')  //Create base mesh and register it to other viewport archival
    {
@@ -143,22 +144,23 @@ class SimplificationController
  
  private void onMeshAdded( Mesh mesh )
  {
-   m_maxMesh++;
-   print("Adding mesh" + m_maxMesh + " " + m_minMesh + "\n");
    m_displayMeshes.add(mesh);
-   if ( m_maxMesh - m_minMesh > c_numMeshes )
+   print("Adding mesh" + m_maxMesh + " " + m_minMesh + " " + m_displayMeshes.size() + "\n");
+   if ( m_maxMesh + 1 - m_minMesh >= c_numMeshes )
    {
      for (int i = m_minMesh; i < m_maxMesh; i++)
      {
        m_viewportManager.unregisterMeshFromViewport( m_displayMeshes.get(i), i - m_minMesh );
+       print("Register to viewport " + (i - m_minMesh) + "\n");
        m_viewportManager.registerMeshToViewport( m_displayMeshes.get(i+1), i - m_minMesh );
      }
      m_minMesh++;
    }
    else
    {
-     m_viewportManager.registerMeshToViewport( m_displayMeshes.get(m_maxMesh), m_maxMesh );
+     m_viewportManager.registerMeshToViewport( m_displayMeshes.get(m_maxMesh + 1), m_maxMesh + 1 );
    }
+   m_maxMesh++;
  }
  
  private void changeIslandMesh(IslandMesh m)
