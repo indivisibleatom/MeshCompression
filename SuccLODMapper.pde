@@ -1,4 +1,4 @@
-int NUMLODS = 1;
+int NUMLODS = 2;
 int MAXTRIANGLES = 1000000;
 
 class SuccLODMapperManager
@@ -495,16 +495,22 @@ class SuccLODMapper
             print("Something wrong! Not an island on double swing");
           }
         }
-        int offset = cornerIsland%3;
-        int tempV = m_baseToRefinedVMap[i][0];
-        int tempT = m_vBaseToRefinedTMap[i][1];
-        for (int j = 0; j < 2; j++)
+        if ( (cornerIsland%3) != 0)
         {
-          m_baseToRefinedVMap[i][j] = m_baseToRefinedVMap[i][(j+offset)%3];
-          m_vBaseToRefinedTMap[i][j] = m_vBaseToRefinedTMap[i][(1+j+offset)%3];
+          int offset = (cornerIsland%3);
+          int []newVMap = new int[3];
+          int []newTMap = new int[3];
+          for (int j = 0; j < 3; j++)
+          {
+            newVMap[j] = m_baseToRefinedVMap[i][(j+offset)%3];
+            newTMap[j] = m_vBaseToRefinedTMap[i][1+(j+offset)%3];
+          }
+          for (int j = 0; j < 3; j++)
+          {
+            m_baseToRefinedVMap[i][j] = newVMap[j];
+            m_vBaseToRefinedTMap[i][j+1] = newTMap[j];
+          }
         }
-        m_baseToRefinedVMap[i][(2+offset)%3] = tempV;
-        m_vBaseToRefinedTMap[i][1+((2+offset)%3)] = tempT;
       }
     }
     
