@@ -47,7 +47,7 @@ class SuccLODMapperManager
     for (int i = NUMLODS-1; i >= 0; i--)
     {
       m_sucLODMapper[i].createGExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
-      //m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
+      m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
       //m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
     }
   }
@@ -68,6 +68,7 @@ class SuccLODMapper
 
   private int[] m_refinedTriangleToOrderedTriangle;
   private int[] m_refinedTriangleToAssociatedVertexNumber;
+  SuccLODMapper m_parent;
   
   SuccLODMapper()
   {
@@ -103,12 +104,55 @@ class SuccLODMapper
     m_vBaseToRefinedTMap = vToTMap;
   }  
   
-  void printVertexMapping(int corner)
+  private void printVertexNumberings( int vertex, boolean useParent )
   {
-    print("Base num vertices " + m_base.nv + "\n");
-    int vertex = m_base.v(corner);
-    print("\n" + corner + " " + vertex + " " + m_baseToRefinedVMap[vertex][0] + " " + m_baseToRefinedVMap[vertex][1] + " " + m_baseToRefinedVMap[vertex][2] + "\n");
-    print(m_tBaseToRefinedTMap[m_base.t(corner)] + " " + m_vBaseToRefinedTMap[vertex][0] + " " + m_vBaseToRefinedTMap[vertex][1] + " " + m_vBaseToRefinedTMap[vertex][2] + " " +  m_vBaseToRefinedTMap[vertex][3] + "\n");
+    if ( useParent )
+    {
+      for (int i = 0; i < m_parent.m_vertexNumberings.length; i++)
+      {
+        if (vertex == m_parent.m_vertexNumberings[i])
+        {
+          print(i + " ");
+        }
+      }
+    }
+    else
+    {
+      for (int i = 0; i < m_vertexNumberings.length; i++)
+      {
+        if (vertex == m_vertexNumberings[i])
+        {
+          print(i + " ");
+        }
+      }
+    }
+  }
+  
+  void printVertexMapping(int corner, int meshNumber)
+  {
+    //Treating corner for the base mesh
+    if (meshNumber != 0)
+    {
+      int vertex = m_base.v(corner);
+      print("\nBaseToRefinedVMap " + corner + " " + vertex + " " + m_baseToRefinedVMap[vertex][0] + " " + m_baseToRefinedVMap[vertex][1] + " " + m_baseToRefinedVMap[vertex][2] + "\n");
+      print("BaseToRefinedTMap " + m_tBaseToRefinedTMap[m_base.t(corner)] + " " + m_vBaseToRefinedTMap[vertex][0] + " " + m_vBaseToRefinedTMap[vertex][1] + " " + m_vBaseToRefinedTMap[vertex][2] + " " +  m_vBaseToRefinedTMap[vertex][3] + "\n");
+    }
+    
+    //Treating corner for the refined mesh
+    if (meshNumber == 1)
+    {
+      print("VertexNumbering for vertex ");
+      int vertex = m_base.v(corner);
+      printVertexNumberings( vertex, true );
+      print("\n");
+    }
+    if (meshNumber == 0)
+    {
+      print("VertexNumbering for vertex ");
+      int vertex = m_refined.v(corner);
+      printVertexNumberings( vertex, false );
+      print("\n");
+    }    
   }
 
   private int getEdgeOffset( int corner )
@@ -288,6 +332,8 @@ class SuccLODMapper
   
   void createGExpansionPacket(SuccLODMapper parent)
   {
+    m_parent = parent; //TODO msati: Debug hack...remove
+
     int []vertexNumberings;
     if ( parent == null )
     {

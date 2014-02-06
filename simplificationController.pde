@@ -69,7 +69,7 @@ class SimplificationController
    if (keyPressed&&key=='h')
    {
      int corner = m_displayMeshes.get(m_minMesh + m_viewportManager.getSelectedViewport()).cc;
-     m_lodMapperManager.getLODMapperForBaseMeshNumber(m_minMesh + m_viewportManager.getSelectedViewport()).printVertexMapping(corner);
+     m_lodMapperManager.getLODMapperForBaseMeshNumber(m_minMesh + m_viewportManager.getSelectedViewport()).printVertexMapping(corner, m_minMesh + m_viewportManager.getSelectedViewport());
    }
    else if (key=='p')  //Create base mesh and register it to other viewport archival
    {
