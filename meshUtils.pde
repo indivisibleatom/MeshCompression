@@ -205,6 +205,14 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
   }
 }
 
+class WorkingMeshUserInputHandler extends MeshUserInputHandler
+{
+  WorkingMeshUserInputHandler( WorkingMesh m )
+  {
+    super(m);
+  }
+}
+
 class IslandMeshUserInputHandler extends MeshUserInputHandler
 {
   private IslandMesh m_mesh;
