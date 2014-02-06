@@ -1,4 +1,4 @@
-int NUMLODS = 2;
+int NUMLODS = 1;
 int MAXTRIANGLES = 1000000;
 
 class SuccLODMapperManager
@@ -50,7 +50,7 @@ class SuccLODMapperManager
       m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
       print("LOD " + i + "\n");
       m_sucLODMapper[i].checkNumberings();
-      m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
+      //m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
     }
   }
 }
@@ -408,7 +408,7 @@ class SuccLODMapper
     }
   }
   
-  //Given a base vertex and triangle, return a corner in the refined mesh in the corresponding triangle so that it is incident upon v
+  //Given a base vertex and triangle, return a corner in the refined mesh in the corresponding triangle so that it is incident upon v's expansion and its incident half edge is shared with a channel
   private int findCornerInRefined( int baseV, int baseT )
   {
     int[] vertexInRefined  = m_baseToRefinedVMap[baseV];
@@ -422,15 +422,16 @@ class SuccLODMapper
       int currentCorner = corner;
       do
       {
-        if (m_refined.v(currentCorner) == vertexInRefined[i])
+        if (m_refined.v(currentCorner) == vertexInRefined[i] && m_refined.tm[m_refined.t(m_refined.s(currentCorner))] == CHANNEL)
         {
+          print("Found");
           return currentCorner;
         }
         currentCorner = m_refined.n(currentCorner);
       }while (currentCorner != corner);
     }
     
-    if ( DEBUG && DEBUG_MODE >= LOW )
+    if ( DEBUG && DEBUG_MODE >= HIGH )
     {
       print("SuccLODMapper::findCornerInRefined returing -1!!");
     }
@@ -462,7 +463,6 @@ class SuccLODMapper
     //Order the G entries correctly
     int[] minTPerVBase = new int[m_base.nv]; //Stores the min T incident on the base vertices
     int[] cornerRefinedPerVBase = new int[m_base.nv]; //Caches corner in refined for min t
-    int[] offsetPerVBase = new int[m_base.nv]; //Final offsets for each base vertex stored here
     for (int i = 0; i < m_base.nv; i++)
     {
       minTPerVBase[i] = m_base.nt;
@@ -470,7 +470,7 @@ class SuccLODMapper
     for (int i = 0; i < m_base.nc; i++)
     {
       int vertexBase = m_base.v(i);
-      int corner = findCornerInRefined( m_base.v(i), m_base.t(i) );
+      int corner = findCornerInRefined( vertexBase, m_base.t(i) );
       if ( corner != -1 ) //If expandable
       {
         int tBase = m_base.t(i);
@@ -487,7 +487,27 @@ class SuccLODMapper
       if ( corner != -1 )
       {
         int cornerIsland = m_refined.s(m_refined.s(corner));
-        offsetPerVBase[i] = cornerIsland%3;
+        if (DEBUG && DEBUG_MODE >= LOW)
+        {
+          if (m_refined.tm[cornerIsland] != ISLAND)
+          {
+            //print("Something wrong!");
+          }
+          else
+          {
+            print("Correct");
+          }
+        }
+        int offset = cornerIsland%3;
+        int tempV = m_baseToRefinedVMap[i][0];
+        int tempT = m_vBaseToRefinedTMap[i][1];
+        for (int j = 0; j < 2; j++)
+        {
+          m_baseToRefinedVMap[i][j] = m_baseToRefinedVMap[i][(j+offset)%3];
+          m_vBaseToRefinedTMap[i][j] = m_vBaseToRefinedTMap[i][(1+j+offset)%3];
+        }
+        m_baseToRefinedVMap[i][(2+offset)%3] = tempV;
+        m_vBaseToRefinedTMap[i][1+((2+offset)%3)] = tempT;
       }
     }
     
@@ -502,9 +522,8 @@ class SuccLODMapper
         }
         else
         {
-          int index = (j + offsetPerVBase[vertexNumberings[i]])%3;
-          m_GExpansionPacket[3*i+j] = P(m_refined.G[m_baseToRefinedVMap[vertexNumberings[i]][index]]);
-          m_vertexNumberings[3*i+j] = m_baseToRefinedVMap[vertexNumberings[i]][index];
+          m_GExpansionPacket[3*i+j] = P(m_refined.G[m_baseToRefinedVMap[vertexNumberings[i]][j]]);
+          m_vertexNumberings[3*i+j] = m_baseToRefinedVMap[vertexNumberings[i]][j];
         }
       }
     }
