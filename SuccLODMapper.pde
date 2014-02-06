@@ -48,7 +48,9 @@ class SuccLODMapperManager
     {
       m_sucLODMapper[i].createGExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
       m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
-      //m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
+      print("LOD " + i + "\n");
+      m_sucLODMapper[i].checkNumberings();
+      m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
     }
   }
 }
@@ -102,8 +104,8 @@ class SuccLODMapper
   void setBaseVToRefinedTMap(int[][] vToTMap)
   {
     m_vBaseToRefinedTMap = vToTMap;
-  }  
-  
+  }
+
   private void printVertexNumberings( int vertex, boolean useParent )
   {
     if ( useParent )
@@ -128,6 +130,30 @@ class SuccLODMapper
     }
   }
   
+  private void printTriangleNumberings( int triangle, boolean useParent )
+  {
+    if ( useParent )
+    {
+      for (int i = 0; i < m_parent.m_triangleNumberings.length; i++)
+      {
+        if (triangle == m_parent.m_triangleNumberings[i])
+        {
+          print(i + " ");
+        }
+      }
+    }
+    else
+    {
+      for (int i = 0; i < m_triangleNumberings.length; i++)
+      {
+        if (triangle == m_triangleNumberings[i])
+        {
+          print(i + " ");
+        }
+      }
+    }
+  }
+  
   void printVertexMapping(int corner, int meshNumber)
   {
     //Treating corner for the base mesh
@@ -145,6 +171,11 @@ class SuccLODMapper
       int vertex = m_base.v(corner);
       printVertexNumberings( vertex, true );
       print("\n");
+      
+      print("TriangleNumbering for triangle ");
+      int triangle = m_base.t(corner);
+      printTriangleNumberings( triangle, true );
+      print("\n");
     }
     if (meshNumber == 0)
     {
@@ -152,7 +183,11 @@ class SuccLODMapper
       int vertex = m_refined.v(corner);
       printVertexNumberings( vertex, false );
       print("\n");
-    }    
+
+      int triangle = m_refined.t(corner);
+      print("TriangleNumbering for triangle ");
+      printTriangleNumberings( triangle, false );
+      print("\n");    }    
   }
 
   private int getEdgeOffset( int corner )
@@ -161,7 +196,7 @@ class SuccLODMapper
     return m_refined.p(corner);
   }
   
-  //Given a base triangle, returns one ordered triangle corresponding to the base triangle
+  //Given a base triangle numbering, returns one ordered triangle corresponding to the base triangle
   private int getOrderedTriangleNumberInBase( SuccLODMapper parent, int baseTriangle )
   {
     if ( parent != null )
@@ -233,25 +268,25 @@ class SuccLODMapper
     }
     else
     {
-      int maxTriangleNumber = numBaseTriangles + 4*parent.m_vertexNumberings.length;
+      int maxTriangleNumber = parent.m_triangleNumberings.length + 4*parent.m_vertexNumberings.length;
       m_edgeExpansionPacket = new boolean[3*maxTriangleNumber];
       for (int i = 0; i < m_edgeExpansionPacket.length; i++)
       {
         m_edgeExpansionPacket[i] = false;
       }
       m_triangleNumberings = new int[maxTriangleNumber];
-      for (int i = 0; i < numBaseTriangles; i++)
+      for (int i = 0; i < parent.m_triangleNumberings.length; i++)
       {
         if ( parent.m_triangleNumberings[i] == -1 )
         {
-          if ( DEBUG && DEBUG_MODE >= LOW )
-          {
-            print("Parent's triangles numberings are -1. This should not happen\n");
-          }
+          m_triangleNumberings[i] = -1;
         }
-        m_triangleNumberings[i] = m_tBaseToRefinedTMap[parent.m_triangleNumberings[i]];
+        else
+        {
+          m_triangleNumberings[i] = m_tBaseToRefinedTMap[parent.m_triangleNumberings[i]];
+        }
       }
-      int offset = numBaseTriangles;      
+      int offset = parent.m_triangleNumberings.length;
       for (int i = 0; i < parent.m_vertexNumberings.length; i++)
       {
         for (int j = 0; j < 4; j++)
@@ -279,7 +314,46 @@ class SuccLODMapper
     }
   }
   
-  private void createEdgeExpansionPacket(SuccLODMapper parent)
+  private int getVertexNumbering(int vertex)
+  {
+    for (int i = 0; i < m_vertexNumberings.length; i++)
+    {
+      if ( m_vertexNumberings[i] == vertex )
+      {
+        return i;
+      }
+    }
+    print("No vertex numbering found for vertex " + vertex + "\n");
+    return -1;
+  }
+  
+  private int getTriangleNumbering(int triangle)
+  {
+    for (int i = 0; i < m_triangleNumberings.length; i++)
+    {
+      if ( m_triangleNumberings[i] == triangle )
+      {
+        return i;
+      }
+    }
+    print("No triangle numbering found for triangle " + triangle + "\n");
+    return -1;
+  }
+  
+  private void checkNumberings()
+  {
+    for (int i = 0; i < m_refined.nv; i++)
+    {
+      getVertexNumbering( i );
+    }
+    for (int i = 0; i < m_refined.nt; i++)
+    {
+      getTriangleNumbering( i );
+    }
+  }  
+  
+  
+  private void createEdgeExpansionPacket(SuccLODMapper parent, int numBaseTriangles)
   {
     for (int i = 0; i < m_refined.nt; i++)
     {
@@ -300,9 +374,13 @@ class SuccLODMapper
         int baseTriangle3 = m_refined.t(m_refined.s(oppositeCorner3));
         int offset3 = getEdgeOffset(m_refined.s(oppositeCorner1));
         
-        int t1 = getOrderedTriangleNumberInBase( parent, baseTriangle1 );
-        int t2 = getOrderedTriangleNumberInBase( parent, baseTriangle2 );
-        int t3 = getOrderedTriangleNumberInBase( parent, baseTriangle3 );
+        int t1 = getTriangleNumbering(baseTriangle1);
+        int t2 = getTriangleNumbering(baseTriangle2);
+        int t3 = getTriangleNumbering(baseTriangle3);
+        
+        /*int t1 = getOrderedTriangleNumberInBase( parent, getTriangleNumbering(baseTriangle1) );
+        int t2 = getOrderedTriangleNumberInBase( parent, getTriangleNumbering(baseTriangle2) );
+        int t3 = getOrderedTriangleNumberInBase( parent, getTriangleNumbering(baseTriangle3) );*/
         
         m_edgeExpansionPacket[3*t1 + offset1] = true;
         m_edgeExpansionPacket[3*t2 + offset2] = true;
