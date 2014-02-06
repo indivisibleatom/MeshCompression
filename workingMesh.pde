@@ -45,11 +45,7 @@ class WorkingMesh extends Mesh
       int triangle = t(currentCorner);
       int orderT = m_orderT[triangle];
 
-      int cornerOffset = (currentCorner%3) == 0 ? 0 : 1;
-      if ( cornerOffset == 1 )
-      {
-        cornerOffset = (currentCorner%3) == 1 ? 1 : 2;
-      }
+      int cornerOffset = currentCorner%3;
 
       //TODO msati3: Optimize this query
       boolean expand = m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset);

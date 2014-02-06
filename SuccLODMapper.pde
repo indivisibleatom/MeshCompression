@@ -408,6 +408,35 @@ class SuccLODMapper
     }
   }
   
+  //Given a base vertex and triangle, return a corner in the refined mesh in the corresponding triangle so that it is incident upon v
+  private int findCornerInRefined( int baseV, int baseT )
+  {
+    int[] vertexInRefined  = m_baseToRefinedVMap[baseV];
+    if (vertexInRefined[1] == -1)
+      return -1;
+    int triangleInRefined = m_tBaseToRefinedTMap[baseT];
+
+    int corner = m_refined.c(triangleInRefined);
+    for (int i = 0; i < 3; i++)
+    {
+      int currentCorner = corner;
+      do
+      {
+        if (m_refined.v(currentCorner) == vertexInRefined[i])
+        {
+          return currentCorner;
+        }
+        currentCorner = m_refined.n(currentCorner);
+      }while (currentCorner != corner);
+    }
+    
+    if ( DEBUG && DEBUG_MODE >= LOW )
+    {
+      print("SuccLODMapper::findCornerInRefined returing -1!!");
+    }
+    return -1;
+  }
+  
   void createGExpansionPacket(SuccLODMapper parent)
   {
     m_parent = parent; //TODO msati: Debug hack...remove
@@ -429,6 +458,39 @@ class SuccLODMapper
       m_vertexNumberings = new int[3*vertexNumberings.length];
       m_GExpansionPacket = new pt[3*vertexNumberings.length];
     }
+    
+    //Order the G entries correctly
+    int[] minTPerVBase = new int[m_base.nv]; //Stores the min T incident on the base vertices
+    int[] cornerRefinedPerVBase = new int[m_base.nv]; //Caches corner in refined for min t
+    int[] offsetPerVBase = new int[m_base.nv]; //Final offsets for each base vertex stored here
+    for (int i = 0; i < m_base.nv; i++)
+    {
+      minTPerVBase[i] = m_base.nt;
+    }
+    for (int i = 0; i < m_base.nc; i++)
+    {
+      int vertexBase = m_base.v(i);
+      int corner = findCornerInRefined( m_base.v(i), m_base.t(i) );
+      if ( corner != -1 ) //If expandable
+      {
+        int tBase = m_base.t(i);
+        if ( tBase < minTPerVBase[vertexBase] )
+        {
+          minTPerVBase[vertexBase] = tBase;
+          cornerRefinedPerVBase[vertexBase] = corner;
+        }
+      }
+    }
+    for (int i = 0; i < m_base.nv; i++)
+    {
+      int corner = cornerRefinedPerVBase[i];
+      if ( corner != -1 )
+      {
+        int cornerIsland = m_refined.s(m_refined.s(corner));
+        offsetPerVBase[i] = cornerIsland%3;
+      }
+    }
+    
     for (int i = 0; i < vertexNumberings.length; i++)
     {
       for (int j = 0; j < 3; j++)
@@ -440,8 +502,9 @@ class SuccLODMapper
         }
         else
         {
-          m_GExpansionPacket[3*i+j] = P(m_refined.G[m_baseToRefinedVMap[vertexNumberings[i]][j]]);
-          m_vertexNumberings[3*i+j] = m_baseToRefinedVMap[vertexNumberings[i]][j];
+          int index = (j + offsetPerVBase[vertexNumberings[i]])%3;
+          m_GExpansionPacket[3*i+j] = P(m_refined.G[m_baseToRefinedVMap[vertexNumberings[i]][index]]);
+          m_vertexNumberings[3*i+j] = m_baseToRefinedVMap[vertexNumberings[i]][index];
         }
       }
     }
