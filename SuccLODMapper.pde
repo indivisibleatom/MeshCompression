@@ -422,9 +422,9 @@ class SuccLODMapper
       int currentCorner = corner;
       do
       {
-        if (m_refined.v(currentCorner) == vertexInRefined[i] && m_refined.tm[m_refined.t(m_refined.s(currentCorner))] == CHANNEL)
+        if (m_refined.v(currentCorner) == vertexInRefined[i] && m_refined.tm[m_refined.t(m_refined.s(currentCorner))] == CHANNEL && m_refined.tm[m_refined.t(m_refined.s(m_refined.s(currentCorner)))] == ISLAND)
         {
-          print("Found");
+          //print("Found");
           return currentCorner;
         }
         currentCorner = m_refined.n(currentCorner);
@@ -466,14 +466,15 @@ class SuccLODMapper
     for (int i = 0; i < m_base.nv; i++)
     {
       minTPerVBase[i] = m_base.nt;
+      cornerRefinedPerVBase[i] = -1;
     }
     for (int i = 0; i < m_base.nc; i++)
     {
       int vertexBase = m_base.v(i);
-      int corner = findCornerInRefined( vertexBase, m_base.t(i) );
+      int tBase = m_base.t(i);
+      int corner = findCornerInRefined( vertexBase, tBase );
       if ( corner != -1 ) //If expandable
       {
-        int tBase = m_base.t(i);
         if ( tBase < minTPerVBase[vertexBase] )
         {
           minTPerVBase[vertexBase] = tBase;
@@ -489,13 +490,9 @@ class SuccLODMapper
         int cornerIsland = m_refined.s(m_refined.s(corner));
         if (DEBUG && DEBUG_MODE >= LOW)
         {
-          if (m_refined.tm[cornerIsland] != ISLAND)
+          if (m_refined.tm[m_refined.t(cornerIsland)] != ISLAND)
           {
-            //print("Something wrong!");
-          }
-          else
-          {
-            print("Correct");
+            print("Something wrong! Not an island on double swing");
           }
         }
         int offset = cornerIsland%3;
