@@ -54,7 +54,7 @@ class WorkingMesh extends Mesh
       {
         result[numResults++] = currentCorner;
       }
-      currentCorner = s(corner);
+      currentCorner = s(currentCorner);
     }
     return result;
   }
@@ -88,8 +88,13 @@ class WorkingMesh extends Mesh
     m_orderT[nt-1] = orderT;
   }
   
+  int numTimes = 0;
+  
   void expand(int corner)
   {
+    numTimes++;
+    if ( numTimes > 1 )
+      return;
     homogenize(corner);
     print("Homogenized");
     int vertex = v(corner);
@@ -99,6 +104,7 @@ class WorkingMesh extends Mesh
       int orderV = m_orderV[vertex];
       pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
       int[] ct = getExpansionCornerNumbers(lod, corner);
+      print("Stiching");
       stitch( result, lod, orderV, ct );
     }
   }
@@ -108,7 +114,7 @@ class WorkingMesh extends Mesh
     int offsetCorner = 3*nt;
     int v1 = addVertex(g[0], currentLOD-1, 3*currentOrderV);
     int v2 = addVertex(g[1], currentLOD-1, 3*currentOrderV+1);
-    int v3 = addVertex(g[3], currentLOD-1, 3*currentOrderV+2);
+    int v3 = addVertex(g[2], currentLOD-1, 3*currentOrderV+2);
     
     int offsetTriangles = m_baseTriangles;
     int nuLowerLOD = NUMLODS - currentLOD;

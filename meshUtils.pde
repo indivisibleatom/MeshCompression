@@ -224,6 +224,14 @@ class WorkingMeshUserInputHandler extends MeshUserInputHandler
     }// sets c to closest corner in M 
     super.interactSelectedMesh();
   }
+  
+  public void onKeyPress()
+  {
+    if(keyPressed&&key == 'G') 
+    {
+      m_mesh.expand(m_mesh.cc);
+    }
+  }
 }
 
 class IslandMeshUserInputHandler extends MeshUserInputHandler
