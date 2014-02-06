@@ -10,7 +10,7 @@ class WorkingMesh extends Mesh
   
   PacketFetcher m_packetFetcher;
   
-  WorkingMesh( Mesh m )
+  WorkingMesh( Mesh m, SuccLODMapperManager lodMapperManager )
   {
    G = m.G;
    V = m.V;
@@ -27,12 +27,13 @@ class WorkingMesh extends Mesh
    for (int i = 0; i < m.nv; i++)
    {
      m_orderV[i] = i;
-     m_LOD[i] = NUMLODS;
+     m_LOD[i] = NUMLODS - 1;
    }
    
    m_baseVerts = nv;
    m_baseTriangles = nt;
    m_userInputHandler = new WorkingMeshUserInputHandler(this);
+   m_packetFetcher = new PacketFetcher(lodMapperManager);
   }
   
   private int[] getExpansionCornerNumbers(int lod, int corner)
@@ -69,7 +70,7 @@ class WorkingMesh extends Mesh
       {
         expand(currentCorner);
       }
-      currentCorner = s(corner);
+      currentCorner = s(currentCorner);
     }
   }
   
@@ -90,20 +91,24 @@ class WorkingMesh extends Mesh
   void expand(int corner)
   {
     homogenize(corner);
+    print("Homogenized");
     int vertex = v(corner);
     int lod = m_LOD[vertex];
-    int orderV = m_orderV[vertex];
-    pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
-    int[] ct = getExpansionCornerNumbers(lod, corner);
-    stitch( result, lod, orderV, ct );
+    if (lod >= 1)
+    {
+      int orderV = m_orderV[vertex];
+      pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
+      int[] ct = getExpansionCornerNumbers(lod, corner);
+      stitch( result, lod, orderV, ct );
+    }
   }
   
   void stitch( pt[] g, int currentLOD, int currentOrderV, int[] ct )
   {
     int offsetCorner = 3*nt;
-    int v1 = addVertex(g[0], currentLOD+1, 3*currentOrderV);
-    int v2 = addVertex(g[1], currentLOD+1, 3*currentOrderV+1);
-    int v3 = addVertex(g[3], currentLOD+1, 3*currentOrderV+2);
+    int v1 = addVertex(g[0], currentLOD-1, 3*currentOrderV);
+    int v2 = addVertex(g[1], currentLOD-1, 3*currentOrderV+1);
+    int v3 = addVertex(g[3], currentLOD-1, 3*currentOrderV+2);
     
     int offsetTriangles = m_baseTriangles;
     int nuLowerLOD = NUMLODS - currentLOD;

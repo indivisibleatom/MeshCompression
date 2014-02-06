@@ -207,9 +207,22 @@ class BaseMeshUserInputHandler extends MeshUserInputHandler
 
 class WorkingMeshUserInputHandler extends MeshUserInputHandler
 {
+  WorkingMesh m_mesh;
+  
   WorkingMeshUserInputHandler( WorkingMesh m )
   {
     super(m);
+    m_mesh = m;
+  }
+
+  public void interactSelectedMesh()
+  {
+    if (keyPressed&&key==' ')
+    {
+      m_mesh.pickc(Pick()); 
+      m_mesh.expand(m_mesh.cc); 
+    }// sets c to closest corner in M 
+    super.interactSelectedMesh();
   }
 }
 

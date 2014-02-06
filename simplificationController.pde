@@ -5,6 +5,7 @@ class SimplificationController
  private ViewportManager m_viewportManager;
  private IslandMesh m_islandMesh;
  private Mesh m_baseMesh;
+ private WorkingMesh m_workingMesh;
  private SuccLODMapperManager m_lodMapperManager;
  private ArrayList<Mesh> m_displayMeshes;
  int m_minMesh;
@@ -82,6 +83,10 @@ class SimplificationController
      if ( m_lodMapperManager.fMaxSimplified() )
      {
        m_lodMapperManager.propagateNumberings();
+       m_workingMesh = new WorkingMesh( m_baseMesh, m_lodMapperManager );
+       m_workingMesh.resetMarkers();
+       m_workingMesh.computeBox();
+       setWorkingMesh();
      }
 
    }
@@ -161,6 +166,12 @@ class SimplificationController
      m_viewportManager.registerMeshToViewport( m_displayMeshes.get(m_maxMesh + 1), m_maxMesh + 1 );
    }
    m_maxMesh++;
+ }
+ 
+ private void setWorkingMesh()
+ {
+   m_viewportManager.unregisterMeshFromViewport( m_displayMeshes.get(m_maxMesh), m_maxMesh - m_minMesh );
+   m_viewportManager.registerMeshToViewport( m_workingMesh, m_maxMesh - m_minMesh );
  }
  
  private void changeIslandMesh(IslandMesh m)

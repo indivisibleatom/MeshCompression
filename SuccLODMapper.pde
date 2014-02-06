@@ -26,6 +26,11 @@ class SuccLODMapperManager
     return null;
   }
   
+  public SuccLODMapper getMapperForLOD(int LOD)
+  {
+    return m_sucLODMapper[LOD];
+  }
+  
   public SuccLODMapper getLODMapperForBaseMeshNumber(int number)
   {
     if ( m_currentLODLevel != -1 )
@@ -50,7 +55,7 @@ class SuccLODMapperManager
       m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
       print("LOD " + i + "\n");
       m_sucLODMapper[i].checkNumberings();
-      //m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
+      m_sucLODMapper[i].createEdgeExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
     }
   }
 }
@@ -84,6 +89,16 @@ class SuccLODMapper
   public void setBaseMesh( Mesh base )
   {
     m_base = base;
+  }
+  
+  pt getGeometry( int index )
+  {
+    return m_GExpansionPacket[index];
+  }
+  
+  boolean getConnectivity( int index )
+  {
+    return m_edgeExpansionPacket[index];
   }
   
   void setRefinedMesh( Mesh refined )
