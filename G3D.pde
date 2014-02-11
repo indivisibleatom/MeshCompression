@@ -4,6 +4,13 @@
 //**                 (points, vectors, and more)                     **   
 //*********************************************************************
 
+float c_epsilon = 0.001;
+
+boolean floatCmp( float a, float b )
+{
+  return (abs(a - b) < c_epsilon);
+}
+
 // ===== vector class
 class vec { float x=0,y=0,z=0; 
    vec () {}; 
@@ -85,6 +92,7 @@ pt P(pt O, float x, vec I, float y, vec J, float z, vec K) {return P(O.x+x*I.x+y
 pt R(pt P, float a, vec I, vec J, pt G) {float x=d(V(G,P),I), y=d(V(G,P),J); float c=cos(a), s=sin(a); return P(P,x*c-x-y*s,I,x*s+y*c-y,J); }; // Rotated P by a around G in plane (I,J)
 void makePts(pt[] C) {for(int i=0; i<C.length; i++) C[i]=P();} // fills array C with points initialized to (0,0,0)
 pt Predict(pt A, pt B, pt C) {return P(B,V(A,C)); };     // B+AC, parallelogram predictor
+boolean equal(pt A, pt B){ return ( floatCmp(A.x, B.x) && floatCmp(A.y, B.y) && floatCmp(A.z, B.z) ); }
 
 
 // ===== mouse tools

@@ -231,6 +231,7 @@ class WorkingMeshUserInputHandler extends MeshUserInputHandler
     {
       m_mesh.expand(m_mesh.cc);
     }
+    super.onKeyPress();
   }
 }
 

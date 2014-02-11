@@ -69,8 +69,14 @@ class SimplificationController
    //Debugging baseVToVMap
    if (keyPressed&&key=='h')
    {
+     print("Size " + m_displayMeshes.size() + "\n");
      int corner = m_displayMeshes.get(m_minMesh + m_viewportManager.getSelectedViewport()).cc;
+     print("Selected corner " + corner + "\n");
      m_lodMapperManager.getLODMapperForBaseMeshNumber(m_minMesh + m_viewportManager.getSelectedViewport()).printVertexMapping(corner, m_minMesh + m_viewportManager.getSelectedViewport());
+     if ( m_workingMesh != null )
+     {
+       m_workingMesh.printVerticesSelected();
+     }
    }
    else if (key=='p')  //Create base mesh and register it to other viewport archival
    {
@@ -85,6 +91,7 @@ class SimplificationController
        m_lodMapperManager.propagateNumberings();
        m_workingMesh = new WorkingMesh( m_baseMesh, m_lodMapperManager );
        m_workingMesh.resetMarkers();
+       m_workingMesh.markExpandableVerts();
        m_workingMesh.computeBox();
        setWorkingMesh();
      }
@@ -171,6 +178,7 @@ class SimplificationController
  private void setWorkingMesh()
  {
    m_viewportManager.unregisterMeshFromViewport( m_displayMeshes.get(m_maxMesh), m_maxMesh - m_minMesh );
+   m_displayMeshes.set( m_maxMesh, m_workingMesh );
    m_viewportManager.registerMeshToViewport( m_workingMesh, m_maxMesh - m_minMesh );
  }
  

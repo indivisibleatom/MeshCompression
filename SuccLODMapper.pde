@@ -172,10 +172,11 @@ class SuccLODMapper
   void printVertexMapping(int corner, int meshNumber)
   {
     //Treating corner for the base mesh
+    print("Printing vertex mapping for corner " + corner + "\n");
     if (meshNumber != 0)
     {
       int vertex = m_base.v(corner);
-      print("\nBaseToRefinedVMap " + corner + " " + vertex + " " + m_baseToRefinedVMap[vertex][0] + " " + m_baseToRefinedVMap[vertex][1] + " " + m_baseToRefinedVMap[vertex][2] + "\n");
+      print("BaseToRefinedVMap " + corner + " " + vertex + " " + m_baseToRefinedVMap[vertex][0] + " " + m_baseToRefinedVMap[vertex][1] + " " + m_baseToRefinedVMap[vertex][2] + "\n");
       print("BaseToRefinedTMap " + m_tBaseToRefinedTMap[m_base.t(corner)] + " " + m_vBaseToRefinedTMap[vertex][0] + " " + m_vBaseToRefinedTMap[vertex][1] + " " + m_vBaseToRefinedTMap[vertex][2] + " " +  m_vBaseToRefinedTMap[vertex][3] + "\n");
     }
     
@@ -208,7 +209,8 @@ class SuccLODMapper
   private int getEdgeOffset( int corner )
   {
     corner %= 3;
-    return m_refined.p(corner);
+    return corner;
+    //return m_refined.p(corner);
   }
   
   //Given a base triangle numbering, returns one ordered triangle corresponding to the base triangle
@@ -342,6 +344,7 @@ class SuccLODMapper
     return -1;
   }
   
+  //Given a refined triangle number, get the ordering of that triangel
   private int getTriangleNumbering(int triangle)
   {
     for (int i = 0; i < m_triangleNumberings.length; i++)
@@ -375,23 +378,23 @@ class SuccLODMapper
       if ( m_refined.tm[i] == ISLAND )
       {
         int corner1 = m_refined.c(i);
-        int oppositeCorner1 = m_refined.o(corner1);
-        int baseTriangle1 = m_refined.t(m_refined.s(oppositeCorner1));
-        int offset1 = getEdgeOffset(m_refined.s(oppositeCorner1));
+        int swingCorner1 = m_refined.u(corner1);
+        int refTriangle1 = m_refined.t(m_refined.u(swingCorner1));
+        int offset1 = getEdgeOffset(m_refined.u(swingCorner1));
 
         int corner2 = m_refined.n(corner1);
-        int oppositeCorner2 = m_refined.o(corner2);
-        int baseTriangle2 = m_refined.t(m_refined.s(oppositeCorner2));
-        int offset2 = getEdgeOffset(m_refined.s(oppositeCorner1));
+        int swingCorner2 = m_refined.u(corner2);
+        int refTriangle2 = m_refined.t(m_refined.u(swingCorner2));
+        int offset2 = getEdgeOffset(m_refined.u(swingCorner2));
 
         int corner3 = m_refined.p(corner1);
-        int oppositeCorner3 = m_refined.o(corner3);
-        int baseTriangle3 = m_refined.t(m_refined.s(oppositeCorner3));
-        int offset3 = getEdgeOffset(m_refined.s(oppositeCorner1));
+        int swingCorner3 = m_refined.u(corner3);
+        int refTriangle3 = m_refined.t(m_refined.u(swingCorner3));
+        int offset3 = getEdgeOffset(m_refined.u(swingCorner3));
         
-        int t1 = getTriangleNumbering(baseTriangle1);
-        int t2 = getTriangleNumbering(baseTriangle2);
-        int t3 = getTriangleNumbering(baseTriangle3);
+        int t1 = getTriangleNumbering(refTriangle1);
+        int t2 = getTriangleNumbering(refTriangle2);
+        int t3 = getTriangleNumbering(refTriangle3);
         
         /*int t1 = getOrderedTriangleNumberInBase( parent, getTriangleNumbering(baseTriangle1) );
         int t2 = getOrderedTriangleNumberInBase( parent, getTriangleNumbering(baseTriangle2) );
@@ -535,7 +538,8 @@ class SuccLODMapper
       {
         if (m_baseToRefinedVMap[vertexNumberings[i]][j] == -1)
         {
-          m_GExpansionPacket[3*i+j] = P(m_refined.G[m_baseToRefinedVMap[vertexNumberings[i]][0]]);
+          m_GExpansionPacket[3*i+j] = null;
+          //m_GExpansionPacket[3*i+j] = P(m_refined.G[m_baseToRefinedVMap[vertexNumberings[i]][0]]);
           m_vertexNumberings[3*i+j] = m_baseToRefinedVMap[vertexNumberings[i]][0];
         }
         else

@@ -408,7 +408,7 @@ class Mesh {
       pc=b;
     }
     if ( origCC != cc && DEBUG && DEBUG_MODE >= LOW ) { 
-      print("Corner picked :" + cc + " vertex :" + v(cc) + " corner for vertex :" + CForV[v(cc)]);
+      print("Corner picked :" + cc + " vertex :" + v(cc) );
     }
   } // picks closest corner to X
   void picksOfClosestVertex (pt X) {
@@ -662,12 +662,12 @@ class Mesh {
     {
       if (cm[i] == 1)
       {
-        fill(green);
+        fill(yellow);
         showCorner(i, 5);
       }
       else if (cm[i] == 2)
       {
-        fill(black);
+        fill(green);
         showCorner(i, 5);
       }
       else
@@ -712,8 +712,9 @@ class Mesh {
     noSmooth(); 
     for (int v=0; v<nv; v++) {
       //if (vm[v]==0) fill(brown,150);
+      if (vm[v]==0) fill(green, 150);
       if (vm[v]==1) fill(red, 150);
-      show(G[v], r);  
+      show(G[v], 5);  
       if (vm[v]==2)
       {
         fill(green, 150);
@@ -754,8 +755,11 @@ class Mesh {
     };
   };         // draws all border edges
   void showEdges () {
-    for (int c=0; c<nc; c++) drawEdge(c);
-  };  
+    for (int c=0; c<nc; c++)
+    {
+      drawEdge(c);
+    }
+  };
   
   void drawEdge(int c) {
     show(g(p(c)), g(n(c)));

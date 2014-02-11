@@ -88,6 +88,66 @@ class WorkingMesh extends Mesh
     m_orderT[nt-1] = orderT;
   }
   
+  void printVerticesSelected()
+  {
+    int vertex = v(cc);
+    int orderV = m_orderV[vertex];
+    int lod = m_LOD[vertex];
+    pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
+    print( "Results " + result[0] + " " + result[1] + " " + result[2] + "\n" );
+  }
+  
+  void markExpandableVerts()
+  {
+    for (int i = 0; i < nc; i++)
+    {
+      int vertex = v(i);
+
+      int orderV = m_orderV[vertex];
+      int triangle = t(i);
+      int cornerOffset = i%3;
+
+      int orderT = m_orderT[triangle];
+      int lod = m_LOD[vertex];
+      pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
+      if (result[1] != null)
+      {
+        vm[vertex] = 1;
+      }
+      else
+      {
+        vm[vertex] = 0;
+      }
+      boolean expand = m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset);
+      if (expand)
+      {
+        int currentCorner = s(i);
+        int minTriangle = maxnt;
+        minTriangle = t(currentCorner);
+        boolean smallest = true;
+        while (currentCorner != i)
+        {
+           cornerOffset = currentCorner%3;
+           triangle = t(currentCorner);
+           orderT = m_orderT[triangle];
+           if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
+           {
+             smallest = false;
+           }
+           currentCorner = s(currentCorner);
+        }
+        if ( smallest )
+        {
+          cm[i] = 1;
+        }
+        else
+        {
+          cm[i] = 2;
+        }
+      }
+    }
+  }
+  
   int numTimes = 0;
   
   void expand(int corner)
@@ -126,10 +186,10 @@ class WorkingMesh extends Mesh
     }
     addTriangle( v1, v2, v3, offsetTriangles + 1, true );
     addTriangle( v1, v(p(ct[0])), v2, offsetTriangles + 2, true );
-    addTriangle( v2, v(p(ct[1])), v3, offsetTriangles + 3, true );
-    addTriangle( v3, v(p(ct[2])), v1, offsetTriangles + 4, true );
+    /*addTriangle( v2, v(p(ct[1])), v3, offsetTriangles + 3, true );
+    addTriangle( v3, v(p(ct[2])), v1, offsetTriangles + 4, true );*/
   
-    O[p(s(ct[0]))] = offsetCorner + 3; 
+    /*O[p(s(ct[0]))] = offsetCorner + 3; 
     O[p(s(ct[1]))] = offsetCorner + 6;
     O[p(s(ct[2]))] = offsetCorner + 9;
     O[offsetCorner + 3] = p(s(ct[0]));
@@ -148,6 +208,6 @@ class WorkingMesh extends Mesh
     O[offsetCorner+2] = offsetCorner+4;
     O[offsetCorner+7] = offsetCorner;
     O[offsetCorner+10] = offsetCorner+1;
-    O[offsetCorner+4] = offsetCorner+2;
+    O[offsetCorner+4] = offsetCorner+2;*/
   }
 }
