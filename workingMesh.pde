@@ -2,63 +2,79 @@ class WorkingMesh extends Mesh
 {
   int[] m_LOD = new int[maxnv]; //LOD per vertex
   int[] m_orderV = new int[maxnv]; //The order of the vertex
-  
+
   int[] m_orderT = new int[maxnt]; //The order of the triangle
 
   int m_baseTriangles;
   int m_baseVerts;
-  
+
   PacketFetcher m_packetFetcher;
-  
+
   WorkingMesh( Mesh m, SuccLODMapperManager lodMapperManager )
   {
-   G = m.G;
-   V = m.V;
-   O = m.O;
-   nv = m.nv;
-   nt = m.nt;
-   nc = m.nc;
-   
-   for (int i = 0; i < m.nt; i++)
-   {
-     m_orderT[i] = i;
-   }
-   
-   for (int i = 0; i < m.nv; i++)
-   {
-     m_orderV[i] = i;
-     m_LOD[i] = NUMLODS - 1;
-   }
-   
-   m_baseVerts = nv;
-   m_baseTriangles = nt;
-   m_userInputHandler = new WorkingMeshUserInputHandler(this);
-   m_packetFetcher = new PacketFetcher(lodMapperManager);
+    G = m.G;
+    V = m.V;
+    O = m.O;
+    nv = m.nv;
+    nt = m.nt;
+    nc = m.nc;
+
+    for (int i = 0; i < m.nt; i++)
+    {
+      m_orderT[i] = i;
+    }
+
+    for (int i = 0; i < m.nv; i++)
+    {
+      m_orderV[i] = i;
+      m_LOD[i] = NUMLODS - 1;
+    }
+
+    m_baseVerts = nv;
+    m_baseTriangles = nt;
+    m_userInputHandler = new WorkingMeshUserInputHandler(this);
+    m_packetFetcher = new PacketFetcher(lodMapperManager);
   }
-  
+
   private int findSmallestExpansionCorner( int lod, int corner )
   {
+    print("Find smallest expansion corner for corner " + corner + "LOD and LOD swing " + lod + " " + m_LOD[v(n(s(corner)))] + "\n");
     int minTriangle = maxnt;
     int currentCorner = corner;
     int smallestCorner = corner;
     int initCorner = corner;
     do
     {
-       int cornerOffset = currentCorner%3;
-       int triangle = t(currentCorner);
-       int orderT = m_orderT[triangle];
-       if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
-       {
-         minTriangle = triangle;
-         smallestCorner = currentCorner;
-       }
-       currentCorner = s(currentCorner);
-    } while (currentCorner != initCorner);
+      int cornerOffset = currentCorner%3;
+      int triangle = t(currentCorner);
+      int orderT = m_orderT[triangle];
+      if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
+      {
+        minTriangle = triangle;
+        smallestCorner = currentCorner;
+      }
+      currentCorner = s(currentCorner);
+      while ( currentCorner != initCorner )
+      {
+        int vertex1 = v(n(currentCorner));
+        int lodCurrent1 = m_LOD[vertex1];
+        int vertex2 = v(p(currentCorner));
+        int lodCurrent2 = m_LOD[vertex2];
+        if ( lod == lodCurrent1 || lod == lodCurrent2 )
+        {
+          break;
+        }
+        print("Skipping corner " + currentCorner + "\n");
+        currentCorner = s(currentCorner);
+      }
+    } 
+    while (currentCorner != initCorner);
     return smallestCorner;
   }
-  
+
   private int[] getExpansionCornerNumbers(int lod, int corner)
   {
+    print("Get expansion corner numbers for lod " + lod + " " + m_LOD[v(corner)] + "\n");
     int []result = new int[3];
     int numResults = 0;
     int currentCorner = findSmallestExpansionCorner(lod, corner);
@@ -77,25 +93,38 @@ class WorkingMesh extends Mesh
         result[numResults++] = currentCorner;
       }
       currentCorner = s(currentCorner);
-    } while (currentCorner != initCorner);
+      while ( currentCorner != initCorner )
+      {
+        int vertex1 = v(n(currentCorner));
+        int lodCurrent1 = m_LOD[vertex1];
+        int vertex2 = v(p(currentCorner));
+        int lodCurrent2 = m_LOD[vertex2];
+        if ( lod == lodCurrent1 || lod == lodCurrent2 )
+        {
+          break;
+        }
+        currentCorner = s(currentCorner);
+      }
+    } 
+    while (currentCorner != initCorner);
     return result;
   }
-  
+
   void homogenize( int corner )
   {
     int currentCorner = s(corner);
-    int orderV = m_orderV[v(corner)];
+    int lod = m_LOD[v(corner)];
     while (currentCorner != corner)
     {
-      int orderCurrent = m_orderV[v(currentCorner)];
-      if ( orderV > orderCurrent )
+      int lodCurrent = m_LOD[v(currentCorner)];
+      if ( lodCurrent > lod )
       {
         expand(currentCorner);
       }
       currentCorner = s(currentCorner);
     }
   }
-  
+
   int addVertex(pt p, int lod, int orderV)
   {
     int vertexIndex = addVertex(p);
@@ -103,13 +132,13 @@ class WorkingMesh extends Mesh
     m_orderV[vertexIndex] = orderV;
     return vertexIndex;
   }
-  
+
   void addTriangle( int v1, int v2, int v3, int orderT, boolean fCallThisClass )
   {
-    addTriangle(v1,v2,v3);
+    addTriangle(v1, v2, v3);
     m_orderT[nt-1] = orderT;
   }
-  
+
   void printVerticesSelected()
   {
     int vertex = v(cc);
@@ -118,7 +147,7 @@ class WorkingMesh extends Mesh
     pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
     print( "Results " + result[0] + " " + result[1] + " " + result[2] + "\n" );
   }
-  
+
   void markExpandableVerts()
   {
     for (int i = 0; i < nc; i++)
@@ -149,14 +178,14 @@ class WorkingMesh extends Mesh
         boolean smallest = true;
         while (currentCorner != i)
         {
-           cornerOffset = currentCorner%3;
-           triangle = t(currentCorner);
-           orderT = m_orderT[triangle];
-           if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
-           {
-             smallest = false;
-           }
-           currentCorner = s(currentCorner);
+          cornerOffset = currentCorner%3;
+          triangle = t(currentCorner);
+          orderT = m_orderT[triangle];
+          if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
+          {
+            smallest = false;
+          }
+          currentCorner = s(currentCorner);
         }
         if ( smallest )
         {
@@ -169,9 +198,9 @@ class WorkingMesh extends Mesh
       }
     }
   }
-  
+
   int numTimes = 0;
-  
+
   void expand(int corner)
   {
     numTimes++;
@@ -181,7 +210,7 @@ class WorkingMesh extends Mesh
     print("Homogenized");
     int vertex = v(corner);
     int lod = m_LOD[vertex];
-    if (lod >= 1)
+    if (lod >= 0)
     {
       int orderV = m_orderV[vertex];
       pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
@@ -190,18 +219,18 @@ class WorkingMesh extends Mesh
       stitch( result, lod, orderV, ct );
     }
   }
-  
+
   void stitch( pt[] g, int currentLOD, int currentOrderV, int[] ct )
   {
     int offsetCorner = 3*nt;
     int v1 = addVertex(g[0], currentLOD-1, 3*currentOrderV);
     int v2 = addVertex(g[1], currentLOD-1, 3*currentOrderV+1);
     int v3 = addVertex(g[2], currentLOD-1, 3*currentOrderV+2);
-    
+
     int offsetTriangles = m_baseTriangles;
     int nuLowerLOD = NUMLODS - currentLOD;
     int verticesAtLOD = m_baseVerts;
-    
+
     //Rehook the triangles incident on expanded vertices
     int currentCorner = s(ct[0]);
     int vertex = v2;
@@ -217,8 +246,9 @@ class WorkingMesh extends Mesh
         vertex = v1;
       }
       currentCorner = s(currentCorner);
-    } while (currentCorner != s(ct[0]));
-    
+    } 
+    while (currentCorner != s (ct[0]));
+
     for (int i = 0; i < nuLowerLOD; i++)
     {
       offsetTriangles += 4 * verticesAtLOD;
@@ -228,21 +258,21 @@ class WorkingMesh extends Mesh
     addTriangle( v1, v(p(ct[0])), v2, offsetTriangles + 2, true );
     addTriangle( v2, v(p(ct[1])), v3, offsetTriangles + 3, true );
     addTriangle( v3, v(p(ct[2])), v1, offsetTriangles + 4, true );
-  
+
     O[p(s(ct[0]))] = offsetCorner + 3; 
     O[p(s(ct[1]))] = offsetCorner + 6;
     O[p(s(ct[2]))] = offsetCorner + 9;
     O[offsetCorner + 3] = p(s(ct[0]));
     O[offsetCorner + 6] = p(s(ct[1]));
     O[offsetCorner + 9] = p(s(ct[2]));
-    
+
     O[n(ct[0])] = offsetCorner + 5;
     O[n(ct[1])] = offsetCorner + 8;
     O[n(ct[2])] = offsetCorner + 11;
     O[offsetCorner + 5] = n(ct[0]);
     O[offsetCorner + 8] = n(ct[1]);
     O[offsetCorner + 11] = n(ct[2]);
-    
+
     O[offsetCorner] = offsetCorner+7;
     O[offsetCorner+1] = offsetCorner+10;
     O[offsetCorner+2] = offsetCorner+4;
@@ -251,3 +281,4 @@ class WorkingMesh extends Mesh
     O[offsetCorner+4] = offsetCorner+2;
   }
 }
+
