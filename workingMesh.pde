@@ -116,10 +116,10 @@ class WorkingMesh extends Mesh
     int lod = m_LOD[v(corner)];
     while (currentCorner != corner)
     {
-      int lodCurrent = m_LOD[v(currentCorner)];
+      int lodCurrent = m_LOD[v(n(currentCorner))];
       if ( lodCurrent > lod )
       {
-        expand(currentCorner);
+        expand(n(currentCorner));
       }
       currentCorner = s(currentCorner);
     }
@@ -146,6 +146,7 @@ class WorkingMesh extends Mesh
     int orderV = m_orderV[vertex];
     int lod = m_LOD[vertex];
     pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
+    print( "Order " + orderV + " " + "lod " + lod + "\n");
     print( "Results " + result[0] + " " + result[1] + " " + result[2] + "\n" );
   }
 
@@ -153,7 +154,7 @@ class WorkingMesh extends Mesh
   {
     for (int i = 0; i < nc; i++)
     {
-      vm[i] = 0;
+      vm[i] = 1;
     }
     for (int i = 0; i < nc; i++)
     {
@@ -163,70 +164,66 @@ class WorkingMesh extends Mesh
       int triangle = t(i);
       int cornerOffset = i%3;
 
-      if (m_orderV[vertex] == -1)
-      {
-        print("Here\n");
-      }
-
       int orderT = m_orderT[triangle];
       int lod = m_LOD[vertex];
-      pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
-      if (result[1] != null)
+      if (lod > 0)
       {
-        vm[vertex] = 1;
-      }
-      else
-      {
-        vm[vertex] = 0;
-      }
-      boolean expand = m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset);
-      if (expand)
-      {
-        int minTriangle = maxnt;
-        minTriangle = t(i);
-        int currentCorner = s(i);
-        boolean smallest = true;
-        while (currentCorner != i)
+        pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
+        if (result[1] != null)
         {
-          cornerOffset = currentCorner%3;
-          triangle = t(currentCorner);
-          orderT = m_orderT[triangle];
-          if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
-          {
-            smallest = false;
-          }
-          currentCorner = s(currentCorner);
-        }
-        if ( smallest )
-        {
-          cm[i] = 1;
+          vm[vertex] = 1;
         }
         else
         {
-          cm[i] = 2;
+          vm[vertex] = 0;
+        }
+        boolean expand = m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset);
+        if (expand)
+        {
+          int minTriangle = maxnt;
+          minTriangle = t(i);
+          int currentCorner = s(i);
+          boolean smallest = true;
+          while (currentCorner != i)
+          {
+            cornerOffset = currentCorner%3;
+            triangle = t(currentCorner);
+            orderT = m_orderT[triangle];
+            if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
+            {
+              smallest = false;
+            }
+            currentCorner = s(currentCorner);
+          }
+          if ( smallest )
+          {
+            cm[i] = 1;
+          }
+          else
+          {
+            cm[i] = 2;
+          }
         }
       }
     }
   }
 
-  int numTimes = 0;
-
   void expand(int corner)
   {
-    numTimes++;
-    if ( numTimes > 5 )
-      return;
-    homogenize(corner);
-    print("Homogenized");
     int vertex = v(corner);
     int lod = m_LOD[vertex];
     if (lod >= 0)
     {
+      homogenize(corner);
+      print("Homogenized");
       int orderV = m_orderV[vertex];
       pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
-      int[] ct = getExpansionCornerNumbers(lod, corner);
-      print("Stiching");
-      stitch( result, lod, orderV, ct );
+      if (result[1] != null)
+      {
+        int[] ct = getExpansionCornerNumbers(lod, corner);
+        print("Stiching");
+        stitch( result, lod, orderV, ct );
+      }
     }
   }
 
