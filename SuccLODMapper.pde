@@ -442,7 +442,6 @@ class SuccLODMapper
       {
         if (m_refined.v(currentCorner) == vertexInRefined[i] && m_refined.tm[m_refined.t(m_refined.s(currentCorner))] == CHANNEL && m_refined.tm[m_refined.t(m_refined.s(m_refined.s(currentCorner)))] == ISLAND)
         {
-          //print("Found");
           return currentCorner;
         }
         currentCorner = m_refined.n(currentCorner);

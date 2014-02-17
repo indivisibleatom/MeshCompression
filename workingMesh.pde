@@ -136,6 +136,7 @@ class WorkingMesh extends Mesh
   void addTriangle( int v1, int v2, int v3, int orderT, boolean fCallThisClass )
   {
     addTriangle(v1, v2, v3);
+    print("Adding triangle with order " + orderT + "\n");
     m_orderT[nt-1] = orderT;
   }
 
@@ -152,11 +153,20 @@ class WorkingMesh extends Mesh
   {
     for (int i = 0; i < nc; i++)
     {
+      vm[i] = 0;
+    }
+    for (int i = 0; i < nc; i++)
+    {
       int vertex = v(i);
 
       int orderV = m_orderV[vertex];
       int triangle = t(i);
       int cornerOffset = i%3;
+
+      if (m_orderV[vertex] == -1)
+      {
+        print("Here\n");
+      }
 
       int orderT = m_orderT[triangle];
       int lod = m_LOD[vertex];
@@ -251,7 +261,14 @@ class WorkingMesh extends Mesh
 
     for (int i = 0; i < nuLowerLOD; i++)
     {
-      offsetTriangles += 4 * verticesAtLOD;
+      if ( i + 1 == nuLowerLOD )
+      {
+        offsetTriangles += 4 * currentOrderV;
+      }
+      else
+      {
+        offsetTriangles += 4 * verticesAtLOD;
+      }
       verticesAtLOD *= 3;
     }
     addTriangle( v1, v2, v3, offsetTriangles + 1, true );
@@ -279,6 +296,7 @@ class WorkingMesh extends Mesh
     O[offsetCorner+7] = offsetCorner;
     O[offsetCorner+10] = offsetCorner+1;
     O[offsetCorner+4] = offsetCorner+2;
+    markExpandableVerts();
   }
 }
 
