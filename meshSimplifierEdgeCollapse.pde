@@ -324,9 +324,9 @@ class MeshSimplifierEdgeCollapse
         m_vertexMappingBaseToMain[commonVertexIndex][2] = m_mesh.v(m_mesh.p(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles])));
         
         m_vertexToTriagleMappingBaseToMain[commonVertexIndex][0] = islandTriangleNumbersInMain[numIslandTriangles];
-        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][1] = m_mesh.t(m_mesh.s(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles])));
-        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][2] = m_mesh.t(m_mesh.s(m_mesh.n(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles]))));
-        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][3] = m_mesh.t(m_mesh.s(m_mesh.p(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles]))));
+        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][1] = m_mesh.t(m_mesh.u(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles])));
+        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][2] = m_mesh.t(m_mesh.u(m_mesh.n(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles]))));
+        m_vertexToTriagleMappingBaseToMain[commonVertexIndex][3] = m_mesh.t(m_mesh.u(m_mesh.p(m_mesh.c(islandTriangleNumbersInMain[numIslandTriangles]))));
         
         numIslandTriangles++;
 

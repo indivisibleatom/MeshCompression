@@ -1,3 +1,5 @@
+int LOD = 0; //TODO msati3: DebugHack
+
 class IslandCreator
 {
   private IslandMesh m_mesh;
@@ -212,16 +214,26 @@ class IslandCreator
       }
     }*/
   }
-  
+   
   void createIslands()
   {
     m_mesh.resetMarkers();
 
     int numTries = 0;
-    while (numTries < 50)
+    //while (numTries < 50)
+    while (numTries < 1)
     {
-      m_seed = -1;
-      for (int i = 0; i < 100; i++)
+      if ( LOD == 0 )
+      {
+        m_seed = 461;
+        LOD++;
+      }
+      else
+      {
+        print("HerE");
+        m_seed = 30;
+      }
+      /*for (int i = 0; i < 100; i++)
       {
         m_seed = retrySeed();
         if ( validTriangle(m_seed) )
@@ -232,7 +244,7 @@ class IslandCreator
         {
           m_seed = -1;
         }
-      }
+      }*/
       if ( m_seed != -1 )
       {
         m_cornerFifo.add(m_seed);
@@ -240,6 +252,8 @@ class IslandCreator
       }
       numTries++;
     }
+    
+    print(m_seed + "\n");
     
     internalCreateIslandsPass2();
     

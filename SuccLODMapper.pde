@@ -203,7 +203,8 @@ class SuccLODMapper
       int triangle = m_refined.t(corner);
       print("TriangleNumbering for triangle ");
       printTriangleNumberings( triangle, false );
-      print("\n");    }    
+      print("\n");    
+    }    
   }
 
   private int getEdgeOffset( int corner )
@@ -214,6 +215,7 @@ class SuccLODMapper
   }
   
   //Given a base triangle numbering, returns one ordered triangle corresponding to the base triangle
+  //Given a base triangle and parent LOD, find out the ordering of the triangle
   private int getOrderedTriangleNumberInBase( SuccLODMapper parent, int baseTriangle )
   {
     if ( parent != null )
@@ -482,17 +484,18 @@ class SuccLODMapper
     int[] cornerRefinedPerVBase = new int[m_base.nv]; //Caches corner in refined for min t
     for (int i = 0; i < m_base.nv; i++)
     {
-      minTPerVBase[i] = m_base.nt;
+      minTPerVBase[i] = MAX_INT;
       cornerRefinedPerVBase[i] = -1;
     }
     for (int i = 0; i < m_base.nc; i++)
     {
       int vertexBase = m_base.v(i);
       int tBase = m_base.t(i);
+      int orderT = getOrderedTriangleNumberInBase( parent, tBase );
       int corner = findCornerInRefined( vertexBase, tBase );
       if ( corner != -1 ) //If expandable
       {
-        if ( tBase < minTPerVBase[vertexBase] )
+        if ( orderT < minTPerVBase[vertexBase] )
         {
           minTPerVBase[vertexBase] = tBase;
           cornerRefinedPerVBase[vertexBase] = corner;

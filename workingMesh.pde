@@ -4,6 +4,7 @@ class WorkingMesh extends Mesh
   int[] m_orderV = new int[maxnv]; //The order of the vertex
 
   int[] m_orderT = new int[maxnt]; //The order of the triangle
+  int[] m_ageT = new int[maxnt];
 
   int m_baseTriangles;
   int m_baseVerts;
@@ -22,6 +23,7 @@ class WorkingMesh extends Mesh
     for (int i = 0; i < m.nt; i++)
     {
       m_orderT[i] = i;
+      m_ageT[i] = NUMLODS - 1;
     }
 
     for (int i = 0; i < m.nv; i++)
@@ -56,11 +58,7 @@ class WorkingMesh extends Mesh
       currentCorner = s(currentCorner);
       while ( currentCorner != initCorner )
       {
-        int vertex1 = v(n(currentCorner));
-        int lodCurrent1 = m_LOD[vertex1];
-        int vertex2 = v(p(currentCorner));
-        int lodCurrent2 = m_LOD[vertex2];
-        if ( lod == lodCurrent1 || lod == lodCurrent2 )
+        if ( m_ageT[t(currentCorner)] >=  lod )
         {
           break;
         }
@@ -93,13 +91,10 @@ class WorkingMesh extends Mesh
         result[numResults++] = currentCorner;
       }
       currentCorner = s(currentCorner);
+      //Skip triangles not of same age as vertex
       while ( currentCorner != initCorner )
       {
-        int vertex1 = v(n(currentCorner));
-        int lodCurrent1 = m_LOD[vertex1];
-        int vertex2 = v(p(currentCorner));
-        int lodCurrent2 = m_LOD[vertex2];
-        if ( lod == lodCurrent1 || lod == lodCurrent2 )
+        if ( m_ageT[t(currentCorner)] >=  lod )
         {
           break;
         }
@@ -112,9 +107,9 @@ class WorkingMesh extends Mesh
 
   void homogenize( int corner )
   {
-    int currentCorner = s(corner);
+    int currentCorner = corner;
     int lod = m_LOD[v(corner)];
-    while (currentCorner != corner)
+    do 
     {
       int lodCurrent = m_LOD[v(n(currentCorner))];
       if ( lodCurrent > lod )
@@ -122,7 +117,7 @@ class WorkingMesh extends Mesh
         expand(n(currentCorner));
       }
       currentCorner = s(currentCorner);
-    }
+    } while(currentCorner != corner);
   }
 
   int addVertex(pt p, int lod, int orderV)
@@ -133,11 +128,12 @@ class WorkingMesh extends Mesh
     return vertexIndex;
   }
 
-  void addTriangle( int v1, int v2, int v3, int orderT, boolean fCallThisClass )
+  void addTriangle( int v1, int v2, int v3, int orderT, int ageT, boolean fCallThisClass )
   {
     addTriangle(v1, v2, v3);
     print("Adding triangle with order " + orderT + "\n");
     m_orderT[nt-1] = orderT;
+    m_ageT[nt - 1] = ageT;
   }
 
   void printVerticesSelected()
@@ -145,16 +141,22 @@ class WorkingMesh extends Mesh
     int vertex = v(cc);
     int orderV = m_orderV[vertex];
     int lod = m_LOD[vertex];
-    pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
-    print( "Order " + orderV + " " + "lod " + lod + "\n");
-    print( "Results " + result[0] + " " + result[1] + " " + result[2] + "\n" );
+    if ( lod >= 0 )
+    {
+      pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
+      int cornerOffset = cc%3;
+      boolean expand = m_packetFetcher.fetchConnectivity(lod, 3*m_orderT[t(cc)] + cornerOffset);
+      print( "Order vertex" + orderV + " " + "lod " + lod + "order triangle " + m_orderT[t(cc)] + "age triangle " + m_ageT[t(cc)] + "\n");
+      print( "Expand edge " + expand + " Geometry " + result[0] + " " + result[1] + " " + result[2] + "\n" );
+    }
   }
 
   void markExpandableVerts()
   {
     for (int i = 0; i < nc; i++)
     {
-      vm[i] = 1;
+      cm[i] = 0;
+      vm[v(i)] = 0;
     }
     for (int i = 0; i < nc; i++)
     {
@@ -166,7 +168,7 @@ class WorkingMesh extends Mesh
 
       int orderT = m_orderT[triangle];
       int lod = m_LOD[vertex];
-      if (lod > 0)
+      if (lod >= 0)
       {
         pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
         if (result[1] != null)
@@ -177,31 +179,48 @@ class WorkingMesh extends Mesh
         {
           vm[vertex] = 0;
         }
-        boolean expand = m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset);
-        if (expand)
+        if ( m_ageT[t(i)] >=  lod )
         {
-          int minTriangle = maxnt;
-          minTriangle = t(i);
-          int currentCorner = s(i);
-          boolean smallest = true;
-          while (currentCorner != i)
+          boolean expand = m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset);
+          if (expand)
           {
-            cornerOffset = currentCorner%3;
-            triangle = t(currentCorner);
-            orderT = m_orderT[triangle];
-            if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
+            int minTriangle = maxnt;
+            minTriangle = t(i);
+            int currentCorner = s(i);
+            boolean smallest = true;
+            while (currentCorner != i)
             {
-              smallest = false;
+              //Skip triangles not of same age as vertex
+              while ( currentCorner != i )
+              {
+                if ( m_ageT[t(currentCorner)] >=  lod )
+                {
+                  break;
+                }
+                currentCorner = s(currentCorner);
+              }
+              if (currentCorner == i)
+              {
+                break;
+              }
+
+              cornerOffset = currentCorner%3;
+              triangle = t(currentCorner);
+              orderT = m_orderT[triangle];
+              if (triangle < minTriangle && m_packetFetcher.fetchConnectivity(lod, 3*orderT + cornerOffset) == true)
+              {
+                smallest = false;
+              }
+              currentCorner = s(currentCorner);
             }
-            currentCorner = s(currentCorner);
-          }
-          if ( smallest )
-          {
-            cm[i] = 1;
-          }
-          else
-          {
-            cm[i] = 2;
+            if ( smallest )
+            {
+              cm[i] = 1;
+            }
+            else
+            {
+              cm[i] = 2;
+            }
           }
         }
       }
@@ -218,10 +237,10 @@ class WorkingMesh extends Mesh
       print("Homogenized");
       int orderV = m_orderV[vertex];
       pt[] result = m_packetFetcher.fetchGeometry(lod, orderV);
-      if (result[1] != null)
+      if (result[1] != null && lod >= 0)
       {
         int[] ct = getExpansionCornerNumbers(lod, corner);
-        print("Stiching");
+        print("Stiching using corners " + ct[0] + " " + ct[1] + " " + ct[2] + "\n");
         stitch( result, lod, orderV, ct );
       }
     }
@@ -262,16 +281,16 @@ class WorkingMesh extends Mesh
       {
         offsetTriangles += 4 * currentOrderV;
       }
-      else
+      /*else
       {
         offsetTriangles += 4 * verticesAtLOD;
-      }
+      }*/
       verticesAtLOD *= 3;
     }
-    addTriangle( v1, v2, v3, offsetTriangles + 1, true );
-    addTriangle( v1, v(p(ct[0])), v2, offsetTriangles + 2, true );
-    addTriangle( v2, v(p(ct[1])), v3, offsetTriangles + 3, true );
-    addTriangle( v3, v(p(ct[2])), v1, offsetTriangles + 4, true );
+    addTriangle( v1, v2, v3, offsetTriangles, currentLOD-1, true );
+    addTriangle( v1, v(p(ct[0])), v2, offsetTriangles + 1, currentLOD-1, true );
+    addTriangle( v2, v(p(ct[1])), v3, offsetTriangles + 2, currentLOD-1, true );
+    addTriangle( v3, v(p(ct[2])), v1, offsetTriangles + 3, currentLOD-1, true );
 
     O[p(s(ct[0]))] = offsetCorner + 3; 
     O[p(s(ct[1]))] = offsetCorner + 6;
