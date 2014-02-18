@@ -398,6 +398,11 @@ class SuccLODMapper
         int t2 = getTriangleNumbering(refTriangle2);
         int t3 = getTriangleNumbering(refTriangle3);
         
+        if ( t2 == 145 || t1 == 145 || t3 == 145 )
+        {
+          print("Yes. Correct " + t1 + " " + t2 + " " + t3 + " " + offset1 + " " + offset2 + " " + offset3 + "\n");
+        }
+        
         /*int t1 = getOrderedTriangleNumberInBase( parent, getTriangleNumbering(baseTriangle1) );
         int t2 = getOrderedTriangleNumberInBase( parent, getTriangleNumbering(baseTriangle2) );
         int t3 = getOrderedTriangleNumberInBase( parent, getTriangleNumbering(baseTriangle3) );*/

@@ -230,7 +230,6 @@ class IslandCreator
       }
       else
       {
-        print("HerE");
         m_seed = 30;
       }
       /*for (int i = 0; i < 100; i++)
