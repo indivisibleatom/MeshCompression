@@ -51,6 +51,7 @@ class SuccLODMapperManager
   {
     for (int i = NUMLODS-1; i >= 0; i--)
     {
+      m_sucLODMapper[i].propagateCornerNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
       m_sucLODMapper[i].createGExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
       m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
       print("LOD " + i + "\n");
@@ -460,14 +461,18 @@ class SuccLODMapper
   //Offsets the corners in a mesh
   private void changeCorners(int corner, int offset)
   {
-    int tempV = V[corner];
-    int tempO = O[corner];
-    
-    tempV = V[corner];
-    tempO = O[corner];
-    
-    if ( tempV != tempO )
+    int[] newVMap= new int[3];
+    int[] newOMap = new int[3];
+    for (int j = 0; j < 3; j++)
     {
+      newVMap[j] = m_refined.v(corner+(j+offset)%3);
+      newOMap[j] = m_refined.o(corner+(j+offset)%3);
+    }
+    for (int j = 0; j < 3; j++)
+    {
+      //m_refined.V[corner+j] = newVMap[j];
+      m_refined.O[corner+j] = newOMap[j];
+      m_refined.O[m_refined.O[corner+j]] = corner+j;
     }
   }
   
@@ -476,18 +481,24 @@ class SuccLODMapper
     int currentCorner = cornerIsland;
     do
     {
-      int channelCorner = u(currentCorner);
+      int channelCorner = m_refined.u(currentCorner);
       int channelOffset = channelCorner % 3;
       if ( channelOffset != 0 )
       {
         changeCorners( channelCorner, channelOffset );
       }
-      currentCorner = n(currentCorner);
+      currentCorner = m_refined.n(currentCorner);
     } while ( currentCorner != cornerIsland );
-    for (int i = 0; i < n; i++)
+  }
+  
+  void propagateCornerNumberings(SuccLODMapper parent)
+  {
+    if ( parent != null )
     {
-      for (int j = 0; j < n; j++ )
+      for (int i = 0; i < m_base.nc; i++)
       {
+        m_base.V[i] = parent.m_refined.V[i];
+        m_base.O[i] = parent.m_refined.O[i];
       }
     }
   }
@@ -537,6 +548,13 @@ class SuccLODMapper
         }
       }
     }
+    
+    /*for (int i = 0; i < m_base.nv; i++)
+    {
+      int corner = cornerRefinedPerVBase[i];
+      int cornerIsland = m_refined.s(m_refined.s(corner));
+    }*/
+    
     for (int i = 0; i < m_base.nv; i++)
     {
       int corner = cornerRefinedPerVBase[i];
@@ -552,7 +570,8 @@ class SuccLODMapper
         }
         if ( (cornerIsland%3) != 0)
         {
-          int offset = (cornerIsland%3);
+          fixupChannelCorners( cornerIsland );
+          /*int offset = (cornerIsland%3);
           int []newVMap = new int[3];
           int []newTMap = new int[3];
           for (int j = 0; j < 3; j++)
@@ -564,9 +583,8 @@ class SuccLODMapper
           {
             m_baseToRefinedVMap[i][j] = newVMap[j];
             m_vBaseToRefinedTMap[i][j+1] = newTMap[j];
-          }
+          }*/
         }
-        fixupChannelCorners( cornerIsland );
       }
     }
     
