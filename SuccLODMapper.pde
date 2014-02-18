@@ -457,6 +457,41 @@ class SuccLODMapper
     return -1;
   }
   
+  //Offsets the corners in a mesh
+  private void changeCorners(int corner, int offset)
+  {
+    int tempV = V[corner];
+    int tempO = O[corner];
+    
+    tempV = V[corner];
+    tempO = O[corner];
+    
+    if ( tempV != tempO )
+    {
+    }
+  }
+  
+  private void fixupChannelCorners( int cornerIsland )
+  {
+    int currentCorner = cornerIsland;
+    do
+    {
+      int channelCorner = u(currentCorner);
+      int channelOffset = channelCorner % 3;
+      if ( channelOffset != 0 )
+      {
+        changeCorners( channelCorner, channelOffset );
+      }
+      currentCorner = n(currentCorner);
+    } while ( currentCorner != cornerIsland );
+    for (int i = 0; i < n; i++)
+    {
+      for (int j = 0; j < n; j++ )
+      {
+      }
+    }
+  }
+  
   void createGExpansionPacket(SuccLODMapper parent)
   {
     m_parent = parent; //TODO msati: Debug hack...remove
@@ -531,6 +566,7 @@ class SuccLODMapper
             m_vBaseToRefinedTMap[i][j+1] = newTMap[j];
           }
         }
+        fixupChannelCorners( cornerIsland );
       }
     }
     
