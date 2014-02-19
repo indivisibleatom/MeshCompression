@@ -214,6 +214,39 @@ class IslandCreator
       }
     }*/
   }
+  
+  //Offsets the corners in a mesh
+  private void changeCorners(int corner, int offset)
+  {
+    int[] newVMap= new int[3];
+    int[] newOMap = new int[3];
+    for (int j = 0; j < 3; j++)
+    {
+      newVMap[j] = m_mesh.V[corner+(j+offset)%3];
+      newOMap[j] = m_mesh.O[corner+(j+offset)%3];
+    }
+    for (int j = 0; j < 3; j++)
+    {
+      m_mesh.V[corner+j] = newVMap[j];
+      m_mesh.O[corner+j] = newOMap[j];
+      m_mesh.O[m_mesh.O[corner+j]] = corner+j;
+    }
+  }
+  
+  private void fixupChannelCorners( int triangleIsland )
+  {
+    int currentCorner = m_mesh.c(triangleIsland);
+    do
+    {
+      int channelCorner = m_mesh.u(currentCorner);
+      int channelOffset = channelCorner % 3;
+      if ( channelOffset != 0 )
+      {
+        changeCorners( m_mesh.c(m_mesh.t(channelCorner)), channelOffset );
+      }
+      currentCorner = m_mesh.n(currentCorner);
+    } while ( currentCorner != m_mesh.c(triangleIsland) );
+  }
    
   void createIslands()
   {
@@ -230,7 +263,6 @@ class IslandCreator
       }
       else
       {
-        print("HerE");
         m_seed = 30;
       }
       /*for (int i = 0; i < 100; i++)
@@ -250,17 +282,25 @@ class IslandCreator
         m_cornerFifo.add(m_seed);
         internalCreateIslandsPass1();
       }
-      numTries++;
+      numTries++;      
     }
     
     print(m_seed + "\n");
     
     internalCreateIslandsPass2();
+
+    for (int i = 0; i < m_mesh.nt; i++)
+    {
+      if ( m_mesh.tm[i] == ISLAND )
+      {
+        fixupChannelCorners( i );
+      }
+   }
     
-     //Clear all vertex markers
-     for (int i = 0; i < m_mesh.nv; i++)
-     {
-       m_mesh.vm[i] = 0;
-     }
-  }
+   //Clear all vertex markers
+   for (int i = 0; i < m_mesh.nv; i++)
+   {
+     m_mesh.vm[i] = 0;
+   }
+ }
 }

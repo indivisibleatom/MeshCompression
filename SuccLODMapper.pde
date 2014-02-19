@@ -51,7 +51,7 @@ class SuccLODMapperManager
   {
     for (int i = NUMLODS-1; i >= 0; i--)
     {
-      m_sucLODMapper[i].propagateCornerNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
+      //m_sucLODMapper[i].pushCornerNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
       m_sucLODMapper[i].createGExpansionPacket( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]) );
       m_sucLODMapper[i].createTriangleNumberings( ( (i == NUMLODS-1)?null : m_sucLODMapper[i+1]), m_sucLODMapper[NUMLODS-1].getBaseTriangles() );
       print("LOD " + i + "\n");
@@ -166,6 +166,19 @@ class SuccLODMapper
         {
           print(i + " ");
         }
+      }
+    }
+  }
+  
+  //Just to ease debugging. Remove in final version
+  void pushCornerNumberings( SuccLODMapper parent )
+  {
+    if ( parent != null )
+    {
+      for (int i = 0; i < parent.m_refined.nc; i++)
+      {
+        m_base.V[i] = parent.m_refined.V[i];
+        m_base.O[i] = parent.m_refined.O[i];
       }
     }
   }
@@ -372,7 +385,42 @@ class SuccLODMapper
       getTriangleNumbering( i );
     }
   }  
+
+  //Offsets the corners in a mesh
+  private void changeCorners(int corner, int offset)
+  {
+    int[] newVMap= new int[3];
+    int[] newOMap = new int[3];
+    for (int j = 0; j < 3; j++)
+    {
+      newVMap[j] = m_refined.V[corner+(j+offset)%3];
+      newOMap[j] = m_refined.O[corner+(j+offset)%3];
+    }
+    for (int j = 0; j < 3; j++)
+    {
+      m_refined.V[corner+j] = newVMap[j];
+      m_refined.O[corner+j] = newOMap[j];
+      m_refined.O[m_refined.O[corner+j]] = corner+j;
+    }
+  }
   
+  private void fixupIslandTriangleCorners( int cornerIsland )
+  {
+    int desiredLowestCorner = cornerIsland;
+    int currestLowestCorner = m_refined.c(m_refined.t(desiredLowestCorner));
+    int offset = desiredLowestCorner % 3;
+    if ( offset != 0 )
+    {
+      changeCorners( currestLowestCorner, offset );
+    }
+    else
+    {
+      if ( DEBUG && DEBUG_MODE >= LOW )
+      {
+        print("SuccLODMapper fixupChannelCorners - this method should not have been called!\n");
+      }
+    }
+  }  
   
   private void createEdgeExpansionPacket(SuccLODMapper parent, int numBaseTriangles)
   {
@@ -405,26 +453,7 @@ class SuccLODMapper
         
         m_edgeExpansionPacket[3*t1 + offset1] = true;
         m_edgeExpansionPacket[3*t2 + offset2] = true;
-        m_edgeExpansionPacket[3*t3 + offset3] = true;
-        
-        int vertexBase = getOrderedVertexNumberInBase( i ); //TODO msati3: Cache this
-
-        //Renumber the G packet
-        /*int offset = 0;
-        if ( t2 < t3 && t2 < t1 )
-        {
-          offset = 1;
-        }
-        if ( t3 < t2 && t3 < t1 )
-        {
-          offset = 2;
-        }
-        pt temp = m_GExpansionPacket[3*vertexBase+offset];
-        m_GExpansionPacket[3*vertexBase+offset] = m_GExpansionPacket[3*vertexBase+(offset+1)%3];
-        offset = (offset + 1) % 3;
-        m_GExpansionPacket[3*vertexBase+offset] = m_GExpansionPacket[3*vertexBase+(offset+1)%3];
-        offset = (offset + 1) % 3;
-        m_GExpansionPacket[3*vertexBase+offset] = temp;*/
+        m_edgeExpansionPacket[3*t3 + offset3] = true;        
       }
     }
   }
@@ -457,52 +486,7 @@ class SuccLODMapper
     }
     return -1;
   }
-  
-  //Offsets the corners in a mesh
-  private void changeCorners(int corner, int offset)
-  {
-    int[] newVMap= new int[3];
-    int[] newOMap = new int[3];
-    for (int j = 0; j < 3; j++)
-    {
-      newVMap[j] = m_refined.v(corner+(j+offset)%3);
-      newOMap[j] = m_refined.o(corner+(j+offset)%3);
-    }
-    for (int j = 0; j < 3; j++)
-    {
-      //m_refined.V[corner+j] = newVMap[j];
-      m_refined.O[corner+j] = newOMap[j];
-      m_refined.O[m_refined.O[corner+j]] = corner+j;
-    }
-  }
-  
-  private void fixupChannelCorners( int cornerIsland )
-  {
-    int currentCorner = cornerIsland;
-    do
-    {
-      int channelCorner = m_refined.u(currentCorner);
-      int channelOffset = channelCorner % 3;
-      if ( channelOffset != 0 )
-      {
-        changeCorners( channelCorner, channelOffset );
-      }
-      currentCorner = m_refined.n(currentCorner);
-    } while ( currentCorner != cornerIsland );
-  }
-  
-  void propagateCornerNumberings(SuccLODMapper parent)
-  {
-    if ( parent != null )
-    {
-      for (int i = 0; i < m_base.nc; i++)
-      {
-        m_base.V[i] = parent.m_refined.V[i];
-        m_base.O[i] = parent.m_refined.O[i];
-      }
-    }
-  }
-  
+   
   void createGExpansionPacket(SuccLODMapper parent)
   {
     m_parent = parent; //TODO msati: Debug hack...remove
@@ -548,13 +532,7 @@ class SuccLODMapper
         }
       }
     }
-    
-    /*for (int i = 0; i < m_base.nv; i++)
-    {
-      int corner = cornerRefinedPerVBase[i];
-      int cornerIsland = m_refined.s(m_refined.s(corner));
-    }*/
-    
+        
     for (int i = 0; i < m_base.nv; i++)
     {
       int corner = cornerRefinedPerVBase[i];
@@ -570,8 +548,9 @@ class SuccLODMapper
         }
         if ( (cornerIsland%3) != 0)
         {
-          fixupChannelCorners( cornerIsland );
-          /*int offset = (cornerIsland%3);
+          print("Fixing up corner in refined " + cornerIsland + "\n");
+          fixupIslandTriangleCorners( cornerIsland );
+          int offset = (cornerIsland%3);
           int []newVMap = new int[3];
           int []newTMap = new int[3];
           for (int j = 0; j < 3; j++)
@@ -583,7 +562,7 @@ class SuccLODMapper
           {
             m_baseToRefinedVMap[i][j] = newVMap[j];
             m_vBaseToRefinedTMap[i][j+1] = newTMap[j];
-          }*/
+          }
         }
       }
     }
